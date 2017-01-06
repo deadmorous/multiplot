@@ -2,6 +2,7 @@ var express = require('express')
 var path = require('path')
 var fs = require('fs')
 var async = require('async')
+var multiplot = require('./multiplot')
 
 var router = express.Router()
 
@@ -13,6 +14,7 @@ router
     .get('/', function(req, res, next) {
         res.render('index');
     })
+
     .get('/view-dir', function(req, res, next) {
         var curdir = req.query.curdir || ''
         var dir = path.join(process.env.MULTIPLOT_DATA_ROOT, curdir)
@@ -38,6 +40,18 @@ router
                         res.send({curdir: curdir, subdirs: result})
                 })
             })
+    })
+
+    .get('/multiplot-info', function(req, res, next) {
+        var curdir = req.query.curdir || ''
+        multiplot.info(curdir, function(err, data) {
+            if (err) {
+                console.log(err)
+                return res.sendStatus(500)
+            }
+            else
+                res.send(data)
+        })
     })
 
 module.exports = router

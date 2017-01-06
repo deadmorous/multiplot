@@ -26,7 +26,10 @@ $(document).ready(function() {
             }
             else
                 title = '/'
-            $('<span>').append(subdirLinkElement(path, title)).appendTo(container)
+            if (i > 0   &&   i === items.length)
+                $('<span>').text(title).appendTo(container)
+            else
+                $('<span>').append(subdirLinkElement(path, title)).appendTo(container)
         }
     }
 
@@ -50,6 +53,11 @@ $(document).ready(function() {
             e.preventDefault()
             viewDirByUrl($(this).attr('href'))
         })
+        $.get('/multiplot-info', { curdir: curdir })
+            .done(function(data) {
+                $('#left-panel').text(data)
+            })
+            .fail(popups.errorMessage)
     }
 
     onSubdirsReceived({curdir: '', subdirs: []})

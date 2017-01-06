@@ -1,5 +1,16 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+    link(rel='stylesheet', href='stylesheets/main-view.css')
+    script(src='/javascripts/jquery-3.1.1.min.js')
+    script(src='/javascripts/d3.min.js')
+    script(src='/javascripts/main-view.js')
+    #left-panel
+    #main-panel
+        #top-panel
+            span.curdir-title Folder:
+            span#curdir
+        .with-border-top
+            .padding#main-view-container
+                #main-view
+    include popups.jade

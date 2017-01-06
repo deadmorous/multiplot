@@ -1,0 +1,52 @@
+style.
+    #popups {
+        position: fixed;
+        top: 20px;
+        left: 25%;
+        right: 25%;
+        z-index: 100;
+        text-align: center;
+        padding: 10px;
+    }
+    #popups > div {
+        display: none;
+        padding: 7px;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        -webkit-box-shadow: 7px 7px 15px 0px rgba(0,0,0,0.55);
+        -moz-box-shadow: 7px 7px 15px 0px rgba(0,0,0,0.55);
+        box-shadow: 7px 7px 15px 0px rgba(0,0,0,0.55);
+    }
+    .popups-info {
+        background-color: #cfc;
+    }
+    .popups-error {
+        background-color: #fcc;
+    }
+    .popups-warning {
+        background-color: #ffc;
+    }
+script.
+    var popups
+    $(document).ready(function() {
+        var container = $('#popups')
+        function message(status, text, duration) {
+            var popup = $('<div>').addClass(status).text(text)
+            container.prepend(popup)
+            popup.slideDown(200)
+            setTimeout(function() {
+                popup.slideUp(500, popup.remove.bind(popup))
+                }, duration || 3000)
+        }
+        popups = {
+            message: message,
+            infoMessage: message.bind(this, 'popups-info'),
+            errorMessage: function(x) {
+                if (x instanceof Object)
+                    x = x.statusText || ('ERROR ' + x.status)
+                message('popups-error', x)
+                },
+            warningMessage: message.bind(this, 'popups-warning')
+        }
+    })
+#popups

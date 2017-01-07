@@ -47,10 +47,40 @@ $(document).ready(function() {
         return typeof data === 'string' ?   JSON.parse(data) :   data
     }
 
-    function labeledCheckbox(labelText, labelClass) {
+    function plotRequest() {
+        var query = {
+            curdir: curdir,
+            categories: []
+        }
+        $('.category').each(function() {
+            var values = []
+            $(this).find('.category-value:checked').parent().children('.category-value-text').each(function() {
+                values.push($(this).text())
+            })
+            query.categories.push(values)
+        })
+        popups.infoMessage('Requesting plot...' + JSON.stringify(query))
+    }
+
+    function makeLazyRequest(request, timeout) {
+        var requestCount = 0
+        return function() {
+            ++requestCount
+            setTimeout(function() {
+                if (--requestCount == 0)
+                    request()
+            }, timeout)
+        }
+    }
+    var lazyPlotRequest = makeLazyRequest(plotRequest, 1500)
+
+    function labeledCheckbox(labelText, checkBoxClass, textSpanClass) {
+        var labelTextElement = $('<span>').text(labelText)
+        if(textSpanClass)
+            labelTextElement.addClass(textSpanClass)
         return $('<label>')
-            .append($('<input>').attr('type', 'checkbox').addClass(labelClass))
-            .append(labelText)
+            .append($('<input>').attr('type', 'checkbox').addClass(checkBoxClass))
+            .append(labelTextElement)
     }
 
     function renderCategories(data) {
@@ -66,11 +96,12 @@ $(document).ready(function() {
                 var catVals = data.categories[icat]
                 for (var ival=0, nvals=catVals.length; ival<nvals; ++ival)
                     $('<div>').addClass('category-value-container')
-                        .append(labeledCheckbox(catVals[ival], 'category-value'))
+                        .append(labeledCheckbox(catVals[ival], 'category-value', 'category-value-text'))
                         .appendTo(catValuesElement)
             }
             $('.category-title').change(function() {
                 $(this).closest('.category').find('.category-value').prop('checked', $(this).prop('checked'))
+                lazyPlotRequest()
             })
             $('.category-value').change(function() {
                 var cat = $(this).closest('.category')
@@ -81,6 +112,7 @@ $(document).ready(function() {
                     title.prop('indeterminate', false).prop('checked', true)
                 else
                     title.prop('indeterminate', true)
+                lazyPlotRequest()
             })
             break
         case 'empty':

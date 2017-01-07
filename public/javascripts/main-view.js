@@ -43,9 +43,57 @@ $(document).ready(function() {
         }
     }
 
+    function toobj(data) {
+        return typeof data === 'string' ?   JSON.parse(data) :   data
+    }
+
+    function labeledCheckbox(labelText, labelClass) {
+        return $('<label>')
+            .append($('<input>').attr('type', 'checkbox').addClass(labelClass))
+            .append(labelText)
+    }
+
+    function renderCategories(data) {
+        var container = $('#left-panel')
+        switch (data.status) {
+        case 'normal':
+            container.html('')
+            var n = data.categoryNames.length
+            for (var icat=0; icat<n; ++icat) {
+                var catElement = $('<div>').addClass('category').appendTo(container)
+                catElement.append(labeledCheckbox(data.categoryNames[icat], 'category-title'))
+                var catValuesElement = $('<div>').addClass('category-values').appendTo(catElement)
+                var catVals = data.categories[icat]
+                for (var ival=0, nvals=catVals.length; ival<nvals; ++ival)
+                    $('<div>').addClass('category-value-container')
+                        .append(labeledCheckbox(catVals[ival], 'category-value'))
+                        .appendTo(catValuesElement)
+            }
+            $('.category-title').change(function() {
+                $(this).closest('.category').find('.category-value').prop('checked', $(this).prop('checked'))
+            })
+            $('.category-value').change(function() {
+                var cat = $(this).closest('.category')
+                var title = cat.find('.category-title')
+                if (cat.find('.category-value:checked').length === 0)
+                    title.prop('indeterminate', false).prop('checked', false)
+                else if (cat.find('.category-value:not(:checked)').length === 0)
+                    title.prop('indeterminate', false).prop('checked', true)
+                else
+                    title.prop('indeterminate', true)
+            })
+            break
+        case 'empty':
+            container.text('No files are available')
+            break
+        default:
+            container.text('Unrecognized server response')
+            break
+        }
+    }
+
     function onSubdirsReceived(data) {
-        if (typeof data === 'string')
-            data = JSON.parse(data)
+        data = toobj(data)
         curdir = data.curdir
         renderCurrentPath()
         renderSubdirs(data.subdirs)
@@ -55,7 +103,7 @@ $(document).ready(function() {
         })
         $.get('/multiplot-info', { curdir: curdir })
             .done(function(data) {
-                $('#left-panel').text(data)
+                renderCategories(toobj(data))
             })
             .fail(popups.errorMessage)
     }

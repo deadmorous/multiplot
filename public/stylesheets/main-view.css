@@ -1,5 +1,5 @@
 #left-panel {
-    position: absolute;
+    position: fixed;
     top: 0px;
     width: 20%;
     bottom: 0px;
@@ -10,9 +10,10 @@
     /* background-color: #fcc; */
     background-color: #eee;
     z-index: 10;
+    overflow: auto
 }
 #main-panel {
-    position: absolute;
+    position: fixed;
     top: 0px;
     right: 0px;
     bottom: 0px;
@@ -68,6 +69,10 @@
 .subdirs-sep {
     padding-left: 5px;
     padding-right: 5px;
+}
+
+.category-values {
+    padding-left: 2ex;
 }
 
 /* see http://stackoverflow.com/questions/6258521/clear-icon-inside-input-text */

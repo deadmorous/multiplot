@@ -37,20 +37,26 @@ router
                         return res.sendStatus(500)
                     }
                     else
-                        res.send({curdir: curdir, subdirs: result})
+                        res.send(JSON.stringify({curdir: curdir, subdirs: result}))
                 })
             })
     })
 
     .get('/multiplot-info', function(req, res, next) {
         var curdir = req.query.curdir || ''
-        multiplot.info(curdir, function(err, data) {
+        multiplot.info(curdir, function(err, di) {
             if (err) {
                 console.log(err)
                 return res.sendStatus(500)
             }
-            else
-                res.send(data)
+            var result = {
+                status: di.status
+            }
+            if (di.status === 'normal') {
+                result.categoryNames = di.info.categoryNames
+                result.categories = di.categories
+            }
+            res.send(JSON.stringify(result))
         })
     })
 

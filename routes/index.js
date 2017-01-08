@@ -60,4 +60,15 @@ router
         })
     })
 
+    .post('/multiplot-data', function(req, res, next) {
+        var query = JSON.parse(req.body.query)
+        multiplot.data(query, function(err, dd) {
+            if (err) {
+                console.log(err)
+                return res.sendStatus(500)
+            }
+            res.send(JSON.stringify(dd))
+        })
+    })
+
 module.exports = router

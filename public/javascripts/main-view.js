@@ -47,6 +47,15 @@ $(document).ready(function() {
         return typeof data === 'string' ?   JSON.parse(data) :   data
     }
 
+    function renderDiagram(data) {
+        data = toobj(data)
+        var container = $('#main-view')
+        container
+            .html('')
+            .append($('<h1>').text('TODO: render diagram') )
+            .append($('<p>').text(JSON.stringify(data)))
+    }
+
     function plotRequest() {
         var query = {
             curdir: curdir,
@@ -59,7 +68,10 @@ $(document).ready(function() {
             })
             query.categories.push(values)
         })
-        popups.infoMessage('Requesting plot...' + JSON.stringify(query))
+        popups.infoMessage('Requesting diagram data...')
+        $.post('/multiplot-data', { query: JSON.stringify(query) })
+            .done(renderDiagram)
+            .fail(popups.errorMessage)
     }
 
     function makeLazyRequest(request, timeout) {

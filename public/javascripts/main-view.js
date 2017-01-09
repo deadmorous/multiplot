@@ -50,10 +50,93 @@ $(document).ready(function() {
     function renderDiagram(data) {
         data = toobj(data)
         var container = $('#main-view')
-        container
-            .html('')
-            .append($('<h1>').text('TODO: render diagram') )
-            .append($('<p>').text(JSON.stringify(data)))
+        if (!(data.length > 0))
+            return container
+                .html('')
+                .append($('<h1>').text('No curves are selected') )
+        async.eachLimit(
+            data,
+            10,
+            function(item, cb) {
+                $.get('/multiplot-file', { curdir: curdir, name: item.name })
+                    .done(function(data) {
+                        item.data = d3.tsvParse(data)
+                        item.extent = {}
+                        item.data.columns.forEach(function(column) {
+                            item.extent[column] = d3.extent(item.data, function(d) {return d[column]})
+                        })
+                        cb()
+                    })
+                    .fail(function(xhr) {
+                        cb(new Error(xhr.statusText || xhr.status))
+                    })
+            },
+            function(err) {
+                if (err)
+                    return popups.errorMessage(xhr)
+                function columnExtent(columnNumber) {
+                    var x = []
+                    data.forEach(function(item) {
+                        var columnName = item.data.columns[columnNumber]
+                        x = x.concat(item.extent[columnName])
+                    })
+                    return d3.extent(x)
+                }
+                var extentX = columnExtent(0)
+                var extentY = columnExtent(1)
+                container.html('')
+
+                var margin = {top: 20, right: 20, bottom: 30, left: 50}
+                var svg = d3.select($('<svg>').appendTo(container)[0])
+                var width = 600
+                var height = 400
+                //* TODO: Remove
+                svg
+                    .attr('left', 0)
+                    .attr('top', 0)
+                    .attr('width', width)
+                    .attr('height', height)
+                // */
+
+                var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                var x = d3.scaleLinear()
+                    .rangeRound([0, width])
+                    .domain(extentX)
+
+                var y = d3.scaleLinear()
+                    .rangeRound([height, 0])
+                    .domain(extentY)
+
+                var line = d3.line()
+                    .x(function(d) {
+                        return x(d.step)
+                    })    // TODO
+                    .y(function(d) {
+                        return y(d.error)
+                    })   // TODO
+
+                g.append("g")
+                    .attr("class", "axis axis--x")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(x));
+
+                g.append("g")
+                    .attr("class", "axis axis--y")
+                    .call(d3.axisLeft(y))
+                  .append("text")
+                    .attr("fill", "#000")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", "0.71em")
+                    .style("text-anchor", "end")
+                    .text("error");
+
+                g.append("path")
+                    .datum(data[0].data)
+                    .attr("class", "line")
+                    .attr("d", line);
+            }
+        )
     }
 
     function plotRequest() {

@@ -1,7 +1,7 @@
 var path = require('path')
 var fs = require('fs')
 var _ = require('lodash')
-var async = require('async')
+// var async = require('async')
 
 var dirInfoCache = {}
 
@@ -64,7 +64,7 @@ function dirInfo(subdir, cb) {
     })
 }
 
-function diagramData(query, cb) {
+function selectionInfo(query, cb) {
     // console.log(query)
     dirInfo(query.curdir, function(err, di) {
         if (err)
@@ -79,6 +79,16 @@ function diagramData(query, cb) {
             })
         })
 
+        // Collect categories from each file name
+        files = _.map(files, function(fileName) { return {
+                name: fileName,
+                categories: fileCategories(di, fileName)
+            } } )
+
+        // Invoke callback
+        cb(null, files)
+
+        /*
         // Turn elements of the files array from strings into objects
         files = _.map(files, function(fileName) { return { name: fileName } } )
 
@@ -124,10 +134,11 @@ function diagramData(query, cb) {
                 cb(null, dd)
             }
         )
+        */
     })
 }
 
 module.exports = {
-    info: dirInfo,
-    data: diagramData
+    dirInfo: dirInfo,
+    selectionInfo: selectionInfo
 }

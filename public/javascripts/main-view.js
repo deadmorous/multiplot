@@ -69,7 +69,7 @@ $(document).ready(function() {
             query.categories.push(values)
         })
         popups.infoMessage('Requesting diagram data...')
-        $.post('/multiplot-data', { query: JSON.stringify(query) })
+        $.post('/multiplot-selection-info', { query: JSON.stringify(query) })
             .done(renderDiagram)
             .fail(popups.errorMessage)
     }
@@ -145,7 +145,7 @@ $(document).ready(function() {
             e.preventDefault()
             viewDirByUrl($(this).attr('href'))
         })
-        $.get('/multiplot-info', { curdir: curdir })
+        $.get('/multiplot-dir-info', { curdir: curdir })
             .done(function(data) {
                 renderCategories(toobj(data))
             })

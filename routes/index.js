@@ -42,9 +42,9 @@ router
             })
     })
 
-    .get('/multiplot-info', function(req, res, next) {
+    .get('/multiplot-dir-info', function(req, res, next) {
         var curdir = req.query.curdir || ''
-        multiplot.info(curdir, function(err, di) {
+        multiplot.dirInfo(curdir, function(err, di) {
             if (err) {
                 console.log(err)
                 return res.sendStatus(500)
@@ -60,15 +60,22 @@ router
         })
     })
 
-    .post('/multiplot-data', function(req, res, next) {
+    .post('/multiplot-selection-info', function(req, res, next) {
         var query = JSON.parse(req.body.query)
-        multiplot.data(query, function(err, dd) {
+        multiplot.selectionInfo(query, function(err, dd) {
             if (err) {
                 console.log(err)
                 return res.sendStatus(500)
             }
             res.send(JSON.stringify(dd))
         })
+    })
+
+    .get('/multiplot-file', function(req, res, next) {
+        var curdir = req.query.curdir || ''
+        var fileName = req.query.name
+        var filePath = path.join(process.env.MULTIPLOT_DATA_ROOT, curdir, fileName)
+        res.sendFile(filePath)
     })
 
 module.exports = router

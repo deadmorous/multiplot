@@ -84,6 +84,12 @@
     height: 100%;
     }
 
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
 /* see http://stackoverflow.com/questions/6258521/clear-icon-inside-input-text */
 .clearable{
     background-image: url('/images/close_search.png');

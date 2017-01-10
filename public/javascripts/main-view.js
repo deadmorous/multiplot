@@ -60,7 +60,11 @@ $(document).ready(function() {
             function(item, cb) {
                 $.get('/multiplot-file', { curdir: curdir, name: item.name })
                     .done(function(data) {
-                        item.data = d3.tsvParse(data)
+                        item.data = d3.tsvParse(data, function(d) {
+                            for(var col in d)
+                                d[col] = +d[col]
+                            return d
+                        })
                         item.extent = {}
                         item.data.columns.forEach(function(column) {
                             item.extent[column] = d3.extent(item.data, function(d) {return d[column]})
@@ -74,6 +78,7 @@ $(document).ready(function() {
             function(err) {
                 if (err)
                     return popups.errorMessage(xhr)
+
                 function columnExtent(columnNumber) {
                     var x = []
                     data.forEach(function(item) {
@@ -87,23 +92,21 @@ $(document).ready(function() {
                 container.html('')
 
                 var margin = {top: 20, right: 20, bottom: 30, left: 50}
-                var svg = d3.select($('<svg>').appendTo(container)[0])
+                var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').appendTo(container)[0])
                 var width = 600
                 var height = 400
-                //* TODO: Remove
-                svg
-                    .attr('left', 0)
-                    .attr('top', 0)
-                    .attr('width', width)
-                    .attr('height', height)
-                // */
+//                svg
+//                    .attr('left', 0)
+//                    .attr('top', 0)
+//                    .attr('width', width)
+//                    .attr('height', height)
 
                 var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-                var x = d3.scaleLinear()
+                var x = d3.scaleLog()
                     .rangeRound([0, width])
                     .domain(extentX)
 
-                var y = d3.scaleLinear()
+                var y = d3.scaleLog()
                     .rangeRound([height, 0])
                     .domain(extentY)
 

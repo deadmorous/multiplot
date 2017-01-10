@@ -79,8 +79,20 @@
 .diagram-legend {
 }
 
+.diagram-legend-summary {
+    padding-bottom: 5px;
+}
+
+.diagram-legend-summary-item {
+    display: inline-block;
+    padding-right: 25px;
+}
+
 .diagram-legend-item {
     display: inline-block;
+    margin-right: 10px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
 .diagram-legend-item-mark {
@@ -94,12 +106,23 @@
 
 .diagram-legend-item-text {
     padding-left: 5px;
-    padding-right: 15px;
 }
 
 .line {
   fill: none;
   stroke-width: 1.5px;
+}
+
+.line-hover, .line:hover {
+    stroke-width: 5px;
+}
+
+.line-dimmed {
+    opacity: 0.4;
+}
+
+.diagram-legend-item-hover, .diagram-legend-item:hover {
+    background-color: #ddd;
 }
 
 /* see http://stackoverflow.com/questions/6258521/clear-icon-inside-input-text */

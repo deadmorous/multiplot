@@ -13,6 +13,26 @@ $(document).ready(function() {
         return result
     }
 
+    function selectedCategories() {
+        var result = []
+        $('.category').each(function() {
+            var values = []
+            $(this).find('.category-value:checked').parent().children('.category-value-text').each(function() {
+                values.push($(this).text())
+            })
+            result.push(values)
+        })
+        return result
+    }
+
+    function categoryNames() {
+        var result = []
+        $('.category-title-text').each(function() {
+            result.push($(this).text())
+        })
+        return result
+    }
+
     function renderCurrentPath() {
         var container = $('#curdir')
         container.html('')
@@ -102,22 +122,59 @@ $(document).ready(function() {
                     .domain([0, data.length])
                     .range([0, 360])
 
-                data.forEach(function(item, index) {
-                    var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
-                    legend.append(
-                        $('<div>')
-                            .addClass('diagram-legend-item')
-                            .append($('<span>')
-                                .css('background-color', color)
-                                .addClass('diagram-legend-item-mark')
-                                .html('&nbsp;')
+                // Generate legend first - then we will be able to find the height of the diagram
+                ;(function() {
+                    var cnames = categoryNames()
+                    var fixedCategories = []
+                    var varyingCategoryIndices = []
+                    var varyingCategoryNames = []
+                    selectedCategories().forEach(function(categories, index) {
+                        if (categories.length === 1)
+                            fixedCategories.push(cnames[index] + ' = ' + categories[0])
+                        else {
+                            varyingCategoryIndices.push(index)
+                            varyingCategoryNames.push(cnames[index])
+                        }
+                    })
+                    function varyingCategoryValues(allCategoryValues) {
+                        return varyingCategoryIndices.map(function(categoryIndex) {
+                            return allCategoryValues[categoryIndex]
+                        })
+                    }
+
+                    var diagramSummary = $('<div>').addClass('diagram-legend-summary').appendTo(legend)
+                    if (fixedCategories.length > 0)
+                        diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Fixed categories: ' + fixedCategories.join(', ')))
+                    if (varyingCategoryNames.length > 0)
+                        diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Varying categories: ' + varyingCategoryNames.join(', ')))
+                    data.forEach(function(item, index) {
+                        var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
+                        legend.append(
+                            $('<div>')
+                                .addClass('diagram-legend-item')
+                                .append($('<span>')
+                                    .css('background-color', color)
+                                    .addClass('diagram-legend-item-mark')
+                                    .html('&nbsp;')
+                                )
+                                .append($('<span>')
+                                    .addClass('diagram-legend-item-text')
+                                    .text(varyingCategoryValues(item.categories).join(', '))
+                                )
+                                .attr('id', 'diagram-legend-item-' + index)
+                                .hover(
+                                    function() {
+                                        var hoverCurveSelector = '#diagram-curve-' + index
+                                        $(hoverCurveSelector).addClass('line-hover')
+                                        $('.line:not(' + hoverCurveSelector + ')').addClass('line-dimmed')
+                                    },
+                                    function() {
+                                        $('.line').removeClass('line-hover line-dimmed')
+                                    }
+                                )
                             )
-                            .append($('<span>')
-                                .addClass('diagram-legend-item-text')
-                                .text(item.categories.join(' '))
-                            )
-                        )
-                })
+                    })
+                })()
 
                 var width = $(svg.node()).width() - margin.left - margin.right
                 var height = $(svg.node()).height() - margin.top - margin.bottom
@@ -161,30 +218,33 @@ $(document).ready(function() {
 
                 data.forEach(function(item, index) {
                     var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
-                    g.append("path")
+                    var path = g.append("path")
                         .datum(item.data)
                         .attr("class", "line")
                         .attr('stroke', color)
                         .attr("d", line)
+                        .attr('id', 'diagram-curve-' + index)
+                    $(path.node())
+                        .hover(
+                            function() {
+                                $('.line:not(#diagram-curve-' + index + ')').addClass('line-dimmed')
+                                $('#diagram-legend-item-' + index).addClass('diagram-legend-item-hover')
+                            },
+                            function() {
+                                $('.line').removeClass('line-dimmed')
+                                $('.diagram-legend-item').removeClass('diagram-legend-item-hover')
+                            }
+                        )
                 })
             }
         )
     }
 
     function plotRequest() {
-        var query = {
-            curdir: curdir,
-            categories: []
-        }
-        $('.category').each(function() {
-            var values = []
-            $(this).find('.category-value:checked').parent().children('.category-value-text').each(function() {
-                values.push($(this).text())
-            })
-            query.categories.push(values)
-        })
         popups.infoMessage('Requesting diagram data...')
-        $.post('/multiplot-selection-info', { query: JSON.stringify(query) })
+        $.post('/multiplot-selection-info', {
+                   query: JSON.stringify({ curdir: curdir, categories: selectedCategories() })
+        })
             .done(renderDiagram)
             .fail(popups.errorMessage)
     }
@@ -218,7 +278,7 @@ $(document).ready(function() {
             var n = data.categoryNames.length
             for (var icat=0; icat<n; ++icat) {
                 var catElement = $('<div>').addClass('category').appendTo(container)
-                catElement.append(labeledCheckbox(data.categoryNames[icat], 'category-title'))
+                catElement.append(labeledCheckbox(data.categoryNames[icat], 'category-title', 'category-title-text'))
                 var catValuesElement = $('<div>').addClass('category-values').appendTo(catElement)
                 var catVals = data.categories[icat]
                 for (var ival=0, nvals=catVals.length; ival<nvals; ++ival)

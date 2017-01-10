@@ -70,6 +70,9 @@ function selectionInfo(query, cb) {
         if (err)
             return cb(err, null)
 
+        if (di.status === 'empty')
+            return cb(null, [])
+
         // Filter files by categories in the query
         var files = di.files.slice()
         var categoryMaps = _.map(query.categories, x => _.countBy(x))

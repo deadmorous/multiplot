@@ -1,6 +1,7 @@
 $(document).ready(function() {
     var recentDirs = []
     var curdir = ''
+    var curdirHasCategories = false
 
     function subdirLinkElement(path, title) {
         var result = $('<a>')
@@ -89,20 +90,41 @@ $(document).ready(function() {
                 }
                 var extentX = columnExtent(0)
                 var extentY = columnExtent(1)
+                var xColumnName = data[0].data.columns[0]
+                var yColumnName = data[0].data.columns[1]
                 container.html('')
 
                 var margin = {top: 20, right: 20, bottom: 30, left: 50}
-                var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').appendTo(container)[0])
-                var width = 600
-                var height = 400
-//                svg
-//                    .attr('left', 0)
-//                    .attr('top', 0)
-//                    .attr('width', width)
-//                    .attr('height', height)
+                var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').addClass('diagram').appendTo(container)[0])
+                var legend = $('<div>').addClass('diagram-legend').appendTo(container)
 
-                var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                var colorScale = d3.scaleLinear()
+                    .domain([0, data.length])
+                    .range([0, 360])
+
+                data.forEach(function(item, index) {
+                    var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
+                    legend.append(
+                        $('<div>')
+                            .addClass('diagram-legend-item')
+                            .append($('<span>')
+                                .css('background-color', color)
+                                .addClass('diagram-legend-item-mark')
+                                .html('&nbsp;')
+                            )
+                            .append($('<span>')
+                                .addClass('diagram-legend-item-text')
+                                .text(item.categories.join(' '))
+                            )
+                        )
+                })
+
+                var width = $(svg.node()).width() - margin.left - margin.right
+                var height = $(svg.node()).height() - margin.top - margin.bottom
+
+                var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
                 var x = d3.scaleLog()
+                // var x = d3.scaleLinear()
                     .rangeRound([0, width])
                     .domain(extentX)
 
@@ -111,17 +133,20 @@ $(document).ready(function() {
                     .domain(extentY)
 
                 var line = d3.line()
-                    .x(function(d) {
-                        return x(d.step)
-                    })    // TODO
-                    .y(function(d) {
-                        return y(d.error)
-                    })   // TODO
+                    .x(function(d) { return x(d[xColumnName]) })
+                    .y(function(d) { return y(d[yColumnName]) })
 
                 g.append("g")
                     .attr("class", "axis axis--x")
                     .attr("transform", "translate(0," + height + ")")
-                    .call(d3.axisBottom(x));
+                    .call(d3.axisBottom(x))
+                  .append("text")
+                    .attr("transform", "translate(" + width + ", 0)")
+                    .attr("fill", "#000")
+                    .attr("y", -12)
+                    .attr("dy", "0.71em")
+                    .style("text-anchor", "end")
+                    .text(xColumnName)
 
                 g.append("g")
                     .attr("class", "axis axis--y")
@@ -132,12 +157,16 @@ $(document).ready(function() {
                     .attr("y", 6)
                     .attr("dy", "0.71em")
                     .style("text-anchor", "end")
-                    .text("error");
+                    .text(yColumnName)
 
-                g.append("path")
-                    .datum(data[0].data)
-                    .attr("class", "line")
-                    .attr("d", line);
+                data.forEach(function(item, index) {
+                    var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
+                    g.append("path")
+                        .datum(item.data)
+                        .attr("class", "line")
+                        .attr('stroke', color)
+                        .attr("d", line)
+                })
             }
         )
     }
@@ -212,12 +241,15 @@ $(document).ready(function() {
                     title.prop('indeterminate', true)
                 lazyPlotRequest()
             })
+            curdirHasCategories = n > 0
             break
         case 'empty':
             container.text('No files are available')
+            curdirHasCategories = false
             break
         default:
             container.text('Unrecognized server response')
+            curdirHasCategories = false
             break
         }
     }
@@ -234,6 +266,17 @@ $(document).ready(function() {
         $.get('/multiplot-dir-info', { curdir: curdir })
             .done(function(data) {
                 renderCategories(toobj(data))
+                if (curdirHasCategories) {
+                    $('.category-value-container:first-child .category-value').prop('checked', true)
+                    $('#main-view')
+                        .append($('<span>')
+                            .append($('<input>')
+                                .attr('type', 'button')
+                                .val('Show diagram')
+                                .click(lazyPlotRequest)
+                            )
+                        )
+                }
             })
             .fail(popups.errorMessage)
     }

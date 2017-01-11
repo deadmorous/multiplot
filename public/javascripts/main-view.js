@@ -1,7 +1,10 @@
 $(document).ready(function() {
     var recentDirs = []
     var curdir = ''
+    var dirinfo
     var curdirHasCategories = false
+    var currentCurveIndex = 0
+    var currentDiagramData
 
     function subdirLinkElement(path, title) {
         var result = $('<a>')
@@ -69,7 +72,7 @@ $(document).ready(function() {
     }
 
     function renderDiagram(data) {
-        data = toobj(data)
+        currentDiagramData = data = toobj(data)
         var container = $('#main-view')
         if (!(data.length > 0))
             return container
@@ -100,21 +103,8 @@ $(document).ready(function() {
                 if (err)
                     return popups.errorMessage(xhr)
 
-                function columnExtent(columnNumber) {
-                    var x = []
-                    data.forEach(function(item) {
-                        var columnName = item.data.columns[columnNumber]
-                        x = x.concat(item.extent[columnName])
-                    })
-                    return d3.extent(x)
-                }
-                var extentX = columnExtent(0)
-                var extentY = columnExtent(1)
-                var xColumnName = data[0].data.columns[0]
-                var yColumnName = data[0].data.columns[1]
+                // Stuff container with sub-container for diagram and legend
                 container.html('')
-
-                var margin = {top: 20, right: 20, bottom: 30, left: 50}
                 var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').addClass('diagram').appendTo(container)[0])
                 var legend = $('<div>').addClass('diagram-legend').appendTo(container)
 
@@ -176,16 +166,43 @@ $(document).ready(function() {
                     })
                 })()
 
+                var curveInfo = dirinfo.processing.curves[currentCurveIndex]
+
+                // Process data
+                // TODO
+                var xyData = []
+
+                // Now generate the diagram
+                function columnExtent(columnNumber) {
+                    var x = []
+                    data.forEach(function(item) {
+                        var columnName = item.data.columns[columnNumber]
+                        x = x.concat(item.extent[columnName])
+                    })
+                    return d3.extent(x)
+                }
+                var extentX = columnExtent(0)
+                var extentY = columnExtent(1)
+                // TODO
+                var xColumnName = curveInfo.x.value //  data[0].data.columns[0]
+                var yColumnName = curveInfo.y.value //  data[0].data.columns[1]
+
+                var margin = {top: 20, right: 20, bottom: 30, left: 50}
+
                 var width = $(svg.node()).width() - margin.left - margin.right
                 var height = $(svg.node()).height() - margin.top - margin.bottom
 
                 var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-                var x = d3.scaleLog()
-                // var x = d3.scaleLinear()
+
+                function makeScale(scaleType) {
+                    return d3[{'linear': 'scaleLinear', 'log': 'scaleLog'}[scaleType] || 'scaleLinear']()
+                }
+
+                var x = makeScale(curveInfo.x.scale)
                     .rangeRound([0, width])
                     .domain(extentX)
 
-                var y = d3.scaleLog()
+                var y = makeScale(curveInfo.y.scale)
                     .rangeRound([height, 0])
                     .domain(extentY)
 
@@ -241,7 +258,7 @@ $(document).ready(function() {
     }
 
     function plotRequest() {
-        popups.infoMessage('Requesting diagram data...')
+        popups.infoMessage('Requesting diagram data...', 300)
         $.post('/multiplot-selection-info', {
                    query: JSON.stringify({ curdir: curdir, categories: selectedCategories() })
         })
@@ -272,6 +289,7 @@ $(document).ready(function() {
 
     function renderCategories(data) {
         var container = $('#left-panel')
+        currentDiagramData = undefined
         switch (data.status) {
         case 'normal':
             container.html('')
@@ -314,6 +332,41 @@ $(document).ready(function() {
         }
     }
 
+    $('#curve-selector')
+        .mouseenter(function() {
+            $('#curve-selector-items').show().offset($(this).offset())
+        } )
+        .mouseleave(function() { $('#curve-selector-items').hide() } )
+
+    function renderCurveSelector(data) {
+        var container = $('#curve-selector-items')
+        container.html('')
+        var hasCurves = data.status === 'normal' && data.processing && data.processing.curves && data.processing.curves.length > 0
+        if (hasCurves) {
+            currentCurveIndex = 0
+            var curveList = $('<ul>').appendTo(container)
+            data.processing.curves.forEach(function(curve, index) {
+                $('<li>').append(
+                    $('<a>').attr('href', '')
+                        .text(curve.title)
+                        .click(function(e) {
+                            e.preventDefault()
+                            currentCurveIndex = index
+                            $('#curve-title').text(curve.title)
+                            if (currentDiagramData)
+                                renderDiagram(currentDiagramData)
+                            else
+                                plotRequest()
+                        })
+                ).appendTo (curveList)
+            })
+            $('#curve-title').text(data.processing.curves[currentCurveIndex].title)
+            $('#curve-selector').show()
+        }
+        else
+            $('#curve-selector').hide()
+    }
+
     function onSubdirsReceived(data) {
         data = toobj(data)
         curdir = data.curdir
@@ -325,8 +378,11 @@ $(document).ready(function() {
         })
         $.get('/multiplot-dir-info', { curdir: curdir })
             .done(function(data) {
-                renderCategories(toobj(data))
+                dirinfo = data = toobj(data)
+                renderCategories(data)
+                renderCurveSelector(data)
                 if (curdirHasCategories) {
+                    // Automatically check categories to show one curve
                     $('.category-value-container:first-child .category-value').prop('checked', true)
                     $('#main-view')
                         .append($('<span>')

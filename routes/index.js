@@ -55,6 +55,7 @@ router
             if (di.status === 'normal') {
                 result.categoryNames = di.info.categoryNames
                 result.categories = di.categories
+                result.processing = di.info.processing
             }
             res.send(JSON.stringify(result))
         })

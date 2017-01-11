@@ -8,8 +8,11 @@ block content
     #left-panel
     #main-panel
         #top-panel
-            span.curdir-title Folder:
-            span#curdir
+            span.top-panel-item Folder:
+                span#curdir
+            span.top-panel-item#curve-selector Curve:
+                span#curve-title
+                span#curve-selector-items
         .with-border-top#main-view
     include popups.jade
     script(src='/javascripts/main-view.js')

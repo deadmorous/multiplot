@@ -71,6 +71,69 @@ $(document).ready(function() {
         return typeof data === 'string' ?   JSON.parse(data) :   data
     }
 
+    function computeValueColumnForCurve(item, valueName, knownColumns) {
+        if (item.length === 0)
+            return  // Empty dataset
+
+        var d = item.data
+        var n = d.length
+        if (knownColumns === undefined) {
+            // Determine which columns are already known
+            knownColumns = {}
+            for (var columnName in d[0])
+                knownColumns[columnName] = 1
+        }
+
+        if (valueName in knownColumns)
+            return  // Value is known
+
+        var recipe = dirinfo.processing.computedValues[valueName]
+        if (!recipe)
+            throw new Error('No recipe for computing value ' + valueName)
+        var dependencies = recipe.dependencies || []
+        dependencies.forEach(function(dependencyName) {
+            if (!(dependencyName in knownColumns))
+                computeValueColumnForCurve(item, dependencyName, knownColumns)
+        })
+        var op = recipe.operation
+        var i
+        switch(op.type) {
+        case 'derivative':
+            if (n < 2)
+                d[0][valueName] = 0  // Unable to really compute derivative
+            else {
+                for (i=1; i<n; ++i)
+                    d[i-1][valueName] = (d[i][op.func] - d[i-1][op.func]) / (d[i][op.arg] - d[i-1][op.arg])
+                d[n-1][valueName] = d[n-2][valueName] // Pad the trailing element with the last value of the derivative
+            }
+            break
+        case 'formula':
+            var funcCtorArgs = [].concat(dependencies)
+            funcCtorArgs.push('return ' + op.formula)
+            var formula = Function.apply(Function, funcCtorArgs)
+            for (i=0; i<n; ++i) {
+                var funcArgs = []
+                dependencies.forEach(function(name) {
+                    funcArgs.push(d[i][name])
+                })
+                d[i][valueName] = formula.apply(null, funcArgs)
+            }
+            break
+        default:
+            throw new Error('Unsupported operation type "' + op.type + '" in recipe for value ' + valueName)
+        }
+        item.extent[valueName] = d3.extent(item.data, function(d) {return d[valueName]})
+        knownColumns[valueName] = 1
+    }
+
+    function processDiagramData() {
+        var curveInfo = dirinfo.processing.curves[currentCurveIndex]
+        currentDiagramData.forEach(function(item, index) {
+            computeValueColumnForCurve(item, curveInfo.x.value)
+            computeValueColumnForCurve(item, curveInfo.y.value)
+        })
+    }
+
     function renderDiagram(data) {
         currentDiagramData = data = toobj(data)
         var container = $('#main-view')
@@ -169,23 +232,20 @@ $(document).ready(function() {
                 var curveInfo = dirinfo.processing.curves[currentCurveIndex]
 
                 // Process data
-                // TODO
-                var xyData = []
+                processDiagramData()
 
                 // Now generate the diagram
-                function columnExtent(columnNumber) {
+                var xColumnName = curveInfo.x.value
+                var yColumnName = curveInfo.y.value
+                function columnExtent(columnName) {
                     var x = []
                     data.forEach(function(item) {
-                        var columnName = item.data.columns[columnNumber]
                         x = x.concat(item.extent[columnName])
                     })
                     return d3.extent(x)
                 }
-                var extentX = columnExtent(0)
-                var extentY = columnExtent(1)
-                // TODO
-                var xColumnName = curveInfo.x.value //  data[0].data.columns[0]
-                var yColumnName = curveInfo.y.value //  data[0].data.columns[1]
+                var extentX = columnExtent(xColumnName)
+                var extentY = columnExtent(yColumnName)
 
                 var margin = {top: 20, right: 20, bottom: 30, left: 50}
 

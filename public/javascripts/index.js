@@ -1,10 +1,8 @@
 $(document).ready(function() {
-    var recentDirs = []
     var curdir = ''
-    var dirinfo
     var curdirHasCategories = false
     var currentCurveIndex = 0
-    var currentDiagramData
+    m = multiplot()
 
     function subdirLinkElement(path, title) {
         var result = $('<a>')
@@ -24,14 +22,6 @@ $(document).ready(function() {
                 values.push($(this).text())
             })
             result.push(values)
-        })
-        return result
-    }
-
-    function categoryNames() {
-        var result = []
-        $('.category-title-text').each(function() {
-            result.push($(this).text())
         })
         return result
     }
@@ -71,259 +61,173 @@ $(document).ready(function() {
         return typeof data === 'string' ?   JSON.parse(data) :   data
     }
 
-    function computeValueColumnForCurve(item, valueName, knownColumns) {
-        if (item.length === 0)
-            return  // Empty dataset
-
-        var d = item.data
-        var n = d.length
-        if (knownColumns === undefined) {
-            // Determine which columns are already known
-            knownColumns = {}
-            for (var columnName in d[0])
-                knownColumns[columnName] = 1
-        }
-
-        if (valueName in knownColumns)
-            return  // Value is known
-
-        var recipe = dirinfo.processing.computedValues[valueName]
-        if (!recipe)
-            throw new Error('No recipe for computing value ' + valueName)
-        var dependencies = recipe.dependencies || []
-        dependencies.forEach(function(dependencyName) {
-            if (!(dependencyName in knownColumns))
-                computeValueColumnForCurve(item, dependencyName, knownColumns)
-        })
-        var op = recipe.operation
-        var i
-        switch(op.type) {
-        case 'derivative':
-            if (n < 2)
-                d[0][valueName] = 0  // Unable to really compute derivative
-            else {
-                for (i=1; i<n; ++i)
-                    d[i-1][valueName] = (d[i][op.func] - d[i-1][op.func]) / (d[i][op.arg] - d[i-1][op.arg])
-                d[n-1][valueName] = d[n-2][valueName] // Pad the trailing element with the last value of the derivative
-            }
-            break
-        case 'formula':
-            var funcCtorArgs = [].concat(dependencies)
-            funcCtorArgs.push('return ' + op.formula)
-            var formula = Function.apply(Function, funcCtorArgs)
-            for (i=0; i<n; ++i) {
-                var funcArgs = []
-                dependencies.forEach(function(name) {
-                    funcArgs.push(d[i][name])
-                })
-                d[i][valueName] = formula.apply(null, funcArgs)
-            }
-            break
-        default:
-            throw new Error('Unsupported operation type "' + op.type + '" in recipe for value ' + valueName)
-        }
-        item.extent[valueName] = d3.extent(item.data, function(d) {return d[valueName]})
-        knownColumns[valueName] = 1
-    }
-
-    function processDiagramData() {
-        var curveInfo = dirinfo.processing.curves[currentCurveIndex]
-        currentDiagramData.forEach(function(item, index) {
-            computeValueColumnForCurve(item, curveInfo.x.value)
-            computeValueColumnForCurve(item, curveInfo.y.value)
-        })
-    }
-
-    function renderDiagram(data) {
-        currentDiagramData = data = toobj(data)
+    function renderDiagram(categorySelection) {
         var container = $('#main-view')
-        if (!(data.length > 0))
-            return container
-                .html('')
-                .append($('<h1>').text('No curves are selected') )
-        async.eachLimit(
-            data,
-            10,
-            function(item, cb) {
-                $.get('/multiplot-file', { curdir: curdir, name: item.name })
-                    .done(function(data) {
-                        item.data = d3.tsvParse(data, function(d) {
-                            for(var col in d)
-                                d[col] = +d[col]
-                            return d
-                        })
-                        item.extent = {}
-                        item.data.columns.forEach(function(column) {
-                            item.extent[column] = d3.extent(item.data, function(d) {return d[column]})
-                        })
-                        cb()
-                    })
-                    .fail(function(xhr) {
-                        cb(new Error(xhr.statusText || xhr.status))
-                    })
-            },
-            function(err) {
-                if (err)
-                    return popups.errorMessage(xhr)
+        m.diagramData({dir: curdir, categories: categorySelection, curveIndex: currentCurveIndex}, function(err, categoryInfo) {
+            if (err)
+                return popups.errorMessage(err)
+            if (!(categoryInfo.length > 0))
+                return container
+                    .html('')
+                    .append($('<h1>').text('No curves are selected') )
 
-                // Stuff container with sub-container for diagram and legend
-                container.html('')
-                var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').addClass('diagram').appendTo(container)[0])
-                var legend = $('<div>').addClass('diagram-legend').appendTo(container)
+            var dirInfo = m.cache[curdir].dirInfo
 
-                var colorScale = d3.scaleLinear()
-                    .domain([0, data.length])
-                    .range([0, 360])
+            // Stuff container with sub-containers for diagram and legend
+            container.html('')
+            var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').addClass('diagram').appendTo(container)[0])
+            var legend = $('<div>').addClass('diagram-legend').appendTo(container)
 
-                // Generate legend first - then we will be able to find the height of the diagram
-                ;(function() {
-                    var cnames = categoryNames()
-                    var fixedCategories = []
-                    var varyingCategoryIndices = []
-                    var varyingCategoryNames = []
-                    selectedCategories().forEach(function(categories, index) {
-                        if (categories.length === 1)
-                            fixedCategories.push(cnames[index] + ' = ' + categories[0])
-                        else {
-                            varyingCategoryIndices.push(index)
-                            varyingCategoryNames.push(cnames[index])
-                        }
-                    })
-                    function varyingCategoryValues(allCategoryValues) {
-                        return varyingCategoryIndices.map(function(categoryIndex) {
-                            return allCategoryValues[categoryIndex]
-                        })
+            var colorScale = d3.scaleLinear()
+                .domain([0, categoryInfo.length])
+                .range([0, 360])
+
+            // Generate legend first - then we will be able to find the height of the diagram
+            ;(function() {
+                var cnames = dirInfo.categoryNames
+                var ncats = cnames.length
+                var fixedCategories = []
+                var varyingCategoryIndices = []
+                var varyingCategoryNames = []
+                var actualCategories = []
+                for (var i=0; i<ncats; ++i) {
+                    var categories = _(categoryInfo).countBy((item) => item.categories[i]).keys().value()
+                    if (categories.length > 1) {
+                        varyingCategoryIndices.push(i)
+                        varyingCategoryNames.push(cnames[i])
                     }
-
-                    var diagramSummary = $('<div>').addClass('diagram-legend-summary').appendTo(legend)
-                    if (fixedCategories.length > 0)
-                        diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Fixed categories: ' + fixedCategories.join(', ')))
-                    if (varyingCategoryNames.length > 0)
-                        diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Varying categories: ' + varyingCategoryNames.join(', ')))
-                    data.forEach(function(item, index) {
-                        var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
-                        legend.append(
-                            $('<div>')
-                                .addClass('diagram-legend-item')
-                                .append($('<span>')
-                                    .css('background-color', color)
-                                    .addClass('diagram-legend-item-mark')
-                                    .html('&nbsp;')
-                                )
-                                .append($('<span>')
-                                    .addClass('diagram-legend-item-text')
-                                    .text(varyingCategoryValues(item.categories).join(', '))
-                                )
-                                .attr('id', 'diagram-legend-item-' + index)
-                                .hover(
-                                    function() {
-                                        var hoverCurveSelector = '#diagram-curve-' + index
-                                        $(hoverCurveSelector).addClass('line-hover')
-                                        $('.line:not(' + hoverCurveSelector + ')').addClass('line-dimmed')
-                                    },
-                                    function() {
-                                        $('.line').removeClass('line-hover line-dimmed')
-                                    }
-                                )
-                            )
-                    })
-                })()
-
-                var curveInfo = dirinfo.processing.curves[currentCurveIndex]
-
-                // Process data
-                processDiagramData()
-
-                // Now generate the diagram
-                var xColumnName = curveInfo.x.value
-                var yColumnName = curveInfo.y.value
-                function columnExtent(columnName) {
-                    var x = []
-                    data.forEach(function(item) {
-                        x = x.concat(item.extent[columnName])
-                    })
-                    return d3.extent(x)
-                }
-                var extentX = columnExtent(xColumnName)
-                var extentY = columnExtent(yColumnName)
-
-                var margin = {top: 20, right: 20, bottom: 30, left: 50}
-
-                var width = $(svg.node()).width() - margin.left - margin.right
-                var height = $(svg.node()).height() - margin.top - margin.bottom
-
-                var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-
-                function makeScale(scaleType) {
-                    return d3[{'linear': 'scaleLinear', 'log': 'scaleLog'}[scaleType] || 'scaleLinear']()
+                    else
+                        fixedCategories.push(cnames[i] + ' = ' + categories[0])
                 }
 
-                var x = makeScale(curveInfo.x.scale)
-                    .rangeRound([0, width])
-                    .domain(extentX)
+                function varyingCategoryValues(allCategoryValues) {
+                    return varyingCategoryIndices.map(function(categoryIndex) {
+                        return allCategoryValues[categoryIndex]
+                    })
+                }
 
-                var y = makeScale(curveInfo.y.scale)
-                    .rangeRound([height, 0])
-                    .domain(extentY)
-
-                var line = d3.line()
-                    .x(function(d) { return x(d[xColumnName]) })
-                    .y(function(d) { return y(d[yColumnName]) })
-
-                g.append("g")
-                    .attr("class", "axis axis--x")
-                    .attr("transform", "translate(0," + height + ")")
-                    .call(d3.axisBottom(x))
-                  .append("text")
-                    .attr("transform", "translate(" + width + ", 0)")
-                    .attr("fill", "#000")
-                    .attr("y", -12)
-                    .attr("dy", "0.71em")
-                    .style("text-anchor", "end")
-                    .text(xColumnName)
-
-                g.append("g")
-                    .attr("class", "axis axis--y")
-                    .call(d3.axisLeft(y))
-                  .append("text")
-                    .attr("fill", "#000")
-                    .attr("transform", "rotate(-90)")
-                    .attr("y", 6)
-                    .attr("dy", "0.71em")
-                    .style("text-anchor", "end")
-                    .text(yColumnName)
-
-                data.forEach(function(item, index) {
+                var diagramSummary = $('<div>').addClass('diagram-legend-summary').appendTo(legend)
+                if (fixedCategories.length > 0)
+                    diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Fixed categories: ' + fixedCategories.join(', ')))
+                if (varyingCategoryNames.length > 0)
+                    diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Varying categories: ' + varyingCategoryNames.join(', ')))
+                categoryInfo.forEach(function(item, index) {
                     var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
-                    var path = g.append("path")
-                        .datum(item.data)
-                        .attr("class", "line")
-                        .attr('stroke', color)
-                        .attr("d", line)
-                        .attr('id', 'diagram-curve-' + index)
-                    $(path.node())
-                        .hover(
-                            function() {
-                                $('.line:not(#diagram-curve-' + index + ')').addClass('line-dimmed')
-                                $('#diagram-legend-item-' + index).addClass('diagram-legend-item-hover')
-                            },
-                            function() {
-                                $('.line').removeClass('line-dimmed')
-                                $('.diagram-legend-item').removeClass('diagram-legend-item-hover')
-                            }
+                    legend.append(
+                        $('<div>')
+                            .addClass('diagram-legend-item')
+                            .append($('<span>')
+                                .css('background-color', color)
+                                .addClass('diagram-legend-item-mark')
+                                .html('&nbsp;')
+                            )
+                            .append($('<span>')
+                                .addClass('diagram-legend-item-text')
+                                .text(varyingCategoryValues(item.categories).join(', '))
+                            )
+                            .attr('id', 'diagram-legend-item-' + index)
+                            .hover(
+                                function() {
+                                    var hoverCurveSelector = '#diagram-curve-' + index
+                                    $(hoverCurveSelector).addClass('line-hover')
+                                    $('.line:not(' + hoverCurveSelector + ')').addClass('line-dimmed')
+                                },
+                                function() {
+                                    $('.line').removeClass('line-hover line-dimmed')
+                                }
+                            )
                         )
                 })
+            })()
+
+            var curveInfo = dirInfo.processing.curves[currentCurveIndex]
+
+            // Now generate the diagram
+            var xColumnName = curveInfo.x.value
+            var yColumnName = curveInfo.y.value
+            var allCurveData = m.cache[curdir].curveData
+            function columnExtent(columnName) {
+                var x = []
+                categoryInfo.forEach(function(item) {
+                    x = x.concat(allCurveData[item.name].extent[columnName])
+                })
+                return d3.extent(x)
             }
-        )
+            var extentX = columnExtent(xColumnName)
+            var extentY = columnExtent(yColumnName)
+
+            var margin = {top: 20, right: 20, bottom: 30, left: 50}
+
+            var width = $(svg.node()).width() - margin.left - margin.right
+            var height = $(svg.node()).height() - margin.top - margin.bottom
+
+            var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+            function makeScale(scaleType) {
+                return d3[{'linear': 'scaleLinear', 'log': 'scaleLog'}[scaleType] || 'scaleLinear']()
+            }
+
+            var x = makeScale(curveInfo.x.scale)
+                .rangeRound([0, width])
+                .domain(extentX)
+
+            var y = makeScale(curveInfo.y.scale)
+                .rangeRound([height, 0])
+                .domain(extentY)
+
+            var line = d3.line()
+                .x(function(d) { return x(d[xColumnName]) })
+                .y(function(d) { return y(d[yColumnName]) })
+
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x))
+              .append("text")
+                .attr("transform", "translate(" + width + ", 0)")
+                .attr("fill", "#000")
+                .attr("y", -12)
+                .attr("dy", "0.71em")
+                .style("text-anchor", "end")
+                .text(xColumnName)
+
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y))
+              .append("text")
+                .attr("fill", "#000")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.71em")
+                .style("text-anchor", "end")
+                .text(yColumnName)
+
+            categoryInfo.forEach(function(item, index) {
+                var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
+                var path = g.append("path")
+                    .datum(allCurveData[item.name].data)
+                    .attr("class", "line")
+                    .attr('stroke', color)
+                    .attr("d", line)
+                    .attr('id', 'diagram-curve-' + index)
+                $(path.node())
+                    .hover(
+                        function() {
+                            $('.line:not(#diagram-curve-' + index + ')').addClass('line-dimmed')
+                            $('#diagram-legend-item-' + index).addClass('diagram-legend-item-hover')
+                        },
+                        function() {
+                            $('.line').removeClass('line-dimmed')
+                            $('.diagram-legend-item').removeClass('diagram-legend-item-hover')
+                        }
+                    )
+            })
+        })
     }
 
     function plotRequest() {
-        popups.infoMessage('Requesting diagram data...', 300)
-        $.post('/multiplot-selection-info', {
-                   query: JSON.stringify({ curdir: curdir, categories: selectedCategories() })
-        })
-            .done(renderDiagram)
-            .fail(popups.errorMessage)
+        // popups.infoMessage('Requesting diagram data...', 300)
+        renderDiagram(selectedCategories())
     }
 
     function makeLazyRequest(request, timeout) {
@@ -413,10 +317,7 @@ $(document).ready(function() {
                             e.preventDefault()
                             currentCurveIndex = index
                             $('#curve-title').text(curve.title)
-                            if (currentDiagramData)
-                                renderDiagram(currentDiagramData)
-                            else
-                                plotRequest()
+                            renderDiagram(selectedCategories())
                         })
                 ).appendTo (curveList)
             })

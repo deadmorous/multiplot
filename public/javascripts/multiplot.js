@@ -1,6 +1,6 @@
 var multiplot = (function() {
     function done(cb) { return function(data) { cb(null, data) } }
-    function fail(cb) { return function(xhr) { cb(xhr) } }
+    function fail(cb) { return function(err) { cb(err) } }
 
     function computeValueColumnForCurve(processingInfo, curveData, valueName, knownColumns) {
         var d = curveData.data
@@ -96,7 +96,7 @@ var multiplot = (function() {
                             var processingInfo = multiplot.cache[options.dir].dirInfo.processing
                             computeValueColumnForCurve(processingInfo, curveData, curveInfo.x.value, knownColumns)
                             computeValueColumnForCurve(processingInfo, curveData, curveInfo.y.value, knownColumns)
-                            done(cb)
+                            done(cb)()
                         }
                     ],
                     function(err) {
@@ -105,7 +105,7 @@ var multiplot = (function() {
                 )
             },
             function(err) {
-                (err? fail: done)(cb)()
+                (err? fail: done)(cb)(categoryInfo)
             })
     }
 

@@ -2,7 +2,7 @@ $(document).ready(function() {
     var curdir = ''
     var curdirHasCategories = false
     var currentCurveIndex = 0
-    m = multiplot()
+    var m = multiplot()
 
     function subdirLinkElement(path, title) {
         var result = $('<a>')
@@ -337,25 +337,25 @@ $(document).ready(function() {
             e.preventDefault()
             viewDirByUrl($(this).attr('href'))
         })
-        $.get('/multiplot-dir-info', { curdir: curdir })
-            .done(function(data) {
-                dirinfo = data = toobj(data)
-                renderCategories(data)
-                renderCurveSelector(data)
-                if (curdirHasCategories) {
-                    // Automatically check categories to show one curve
-                    $('.category-value-container:first-child .category-value').prop('checked', true)
-                    $('#main-view')
-                        .append($('<span>')
-                            .append($('<input>')
-                                .attr('type', 'button')
-                                .val('Show diagram')
-                                .click(lazyPlotRequest)
-                            )
+        m.dirInfo(curdir, function(err, data) {
+            if (err)
+                popups.errorMessage(err)
+            dirinfo = data = toobj(data)
+            renderCategories(data)
+            renderCurveSelector(data)
+            if (curdirHasCategories) {
+                // Automatically check categories to show one curve
+                $('.category-value-container:first-child .category-value').prop('checked', true)
+                $('#main-view')
+                    .append($('<span>')
+                        .append($('<input>')
+                            .attr('type', 'button')
+                            .val('Show diagram')
+                            .click(lazyPlotRequest)
                         )
-                }
-            })
-            .fail(popups.errorMessage)
+                    )
+            }
+        })
     }
 
     onSubdirsReceived({curdir: '', subdirs: []})

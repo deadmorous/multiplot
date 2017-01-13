@@ -116,6 +116,7 @@ function renderDiagram(m, curdir, categorySelection, curveIndex) {
             .x(function(d) { return x(d[xColumnName]) })
             .y(function(d) { return y(d[yColumnName]) })
 
+        // X axis
         g.append("g")
             .attr("class", "axis axis--x")
             .attr("transform", "translate(0," + height + ")")
@@ -128,6 +129,7 @@ function renderDiagram(m, curdir, categorySelection, curveIndex) {
             .style("text-anchor", "end")
             .text(xColumnName)
 
+        // Y axis
         g.append("g")
             .attr("class", "axis axis--y")
             .call(d3.axisLeft(y))
@@ -138,6 +140,18 @@ function renderDiagram(m, curdir, categorySelection, curveIndex) {
             .attr("dy", "0.71em")
             .style("text-anchor", "end")
             .text(yColumnName)
+
+        // grid lines X = const
+        g.append("g")
+            .classed("grid", true)
+            .attr("transform", "translate(0, " + height + ")")
+            .call(d3.axisTop(x).tickSize(height).tickFormat(""))
+
+        // grid lines Y = const
+        g.append("g")
+            .classed("grid", true)
+            .attr("transform", "translate(" + width + ", 0)")
+            .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
         categoryInfo.forEach(function(item, index) {
             var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()

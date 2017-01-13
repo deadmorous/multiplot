@@ -1,21 +1,26 @@
 extends layout
 
 block content
-    link(rel='stylesheet', href='stylesheets/main-view.css')
+    link(rel='stylesheet', href='stylesheets/index.css')
     script(src='/javascripts/jquery-3.1.1.min.js')
     script(src='/javascripts/d3.min.js')
     script(src='/javascripts/async.min.js')
     script(src='/javascripts/lodash.min.js')
     script(src='/javascripts/md5.min.js')
-    script(src='/javascripts/multiplot.js')
     #left-panel
     #main-panel
         #top-panel
-            span.top-panel-item Folder:
+            span.top-panel-item
+                span: a#chdir(href='') Folder
                 span#curdir
             span.top-panel-item#curve-selector Curve:
                 span#curve-title
                 span#curve-selector-items
         .with-border-top#main-view
     include popups.jade
+    script(src='/javascripts/folderNavigator.js')
+    script(src='/javascripts/multiplot.js')
+    script(src='/javascripts/categorySelector.js')
+    script(src='/javascripts/renderDiagram.js')
+    script(src='/javascripts/curveSelector.js')
     script(src='/javascripts/index.js')

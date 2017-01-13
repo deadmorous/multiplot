@@ -117,7 +117,7 @@ var multiplot = (function() {
     Multiplot.prototype.dirInfo = function(dir, cb) {
         var self = this
         if (self.cache[dir])
-            return done(cb)(self.cache[dir])
+            return done(cb)(self.cache[dir].dirInfo)
         $.get('/multiplot-dir-info', { curdir: dir })
             .done(function(data) {
                 data = JSON.parse(data)

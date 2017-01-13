@@ -28,26 +28,28 @@ style.
         background-color: #ffc;
     }
 script.
-    var popups
-    $(document).ready(function() {
-        var container = $('#popups')
+    var popups = (function() {
+        var container
+        $(document).ready(function() {
+            container = $('#popups')
+        })
         function message(status, text, duration) {
             var popup = $('<div>').addClass(status).text(text)
             container.prepend(popup)
             popup.slideDown(200)
             setTimeout(function() {
                 popup.slideUp(500, popup.remove.bind(popup))
-                }, duration || 3000)
+            }, duration || 3000)
         }
-        popups = {
+        return {
             message: message,
             infoMessage: message.bind(this, 'popups-info'),
             errorMessage: function(x) {
                 if (x instanceof Object)
                     x = x.statusText || ('ERROR ' + x.status)
                 message('popups-error', x)
-                },
+            },
             warningMessage: message.bind(this, 'popups-warning')
         }
-    })
+    })()
 #popups

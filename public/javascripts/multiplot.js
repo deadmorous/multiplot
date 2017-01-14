@@ -2,6 +2,33 @@ var multiplot = (function() {
     function done(cb) { return function(data) { cb(null, data) } }
     function fail(cb) { return function(err) { cb(err) } }
 
+    function computeMovingAverage(d, op, valueName) {
+        var n = d.length
+        var navg = op.n < n? op.n: n
+        var source = op.source
+        var sum = 0
+        function avg() { return sum/navg }
+        function val(row) { return d[row][source] }
+        function setval(row, v) { d[row][valueName] = v }
+        var i
+        for (i=0; i<navg; ++i)
+            sum += val(i)
+        if (navg < d.length) {
+            var pad = navg >> 1
+            for (i=0; i<=pad; ++i)
+                setval(i, avg())
+            for (; i-pad-1+navg<n; ++i) {
+                sum = sum - val(i-pad-1) + val(i-pad-1+navg)
+                setval(i, avg())
+            }
+            for (; i<n; ++i)
+                setval(i, avg())
+        }
+        else
+            for (i=0; i<n; ++i)
+                setval(i, avg())
+    }
+
     function computeValueColumnForCurve(processingInfo, curveData, valueName, knownColumns) {
         var d = curveData.data
         if (d.length === 0)
@@ -42,6 +69,9 @@ var multiplot = (function() {
                     d[i-1][valueName] = (d[i][op.func] - d[i-1][op.func]) / (d[i][op.arg] - d[i-1][op.arg])
                 d[n-1][valueName] = d[n-2][valueName] // Pad the trailing element with the last value of the derivative
             }
+            break
+        case 'average':
+            computeMovingAverage(d, op, valueName)
             break
         case 'formula':
             var funcCtorArgs = [].concat(dependencies)

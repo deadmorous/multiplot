@@ -121,11 +121,11 @@ var multiplot = (function() {
                                 .fail(fail(cb))
                             },
                         function(curveData, cb) {
-                            var curveInfo = cacheItem.dirInfo.processing.curves[options.curveIndex]
+                            var curve = options.curve
                             var knownColumns = {}
                             var processingInfo = multiplot.cache[options.dir].dirInfo.processing
-                            computeValueColumnForCurve(processingInfo, curveData, curveInfo.x.value, knownColumns)
-                            computeValueColumnForCurve(processingInfo, curveData, curveInfo.y.value, knownColumns)
+                            computeValueColumnForCurve(processingInfo, curveData, curve.x.value, knownColumns)
+                            computeValueColumnForCurve(processingInfo, curveData, curve.y.value, knownColumns)
                             done(cb)()
                         }
                     ],
@@ -163,7 +163,7 @@ var multiplot = (function() {
 
     Multiplot.prototype.diagramData = function(options, cb) {
         var self = this
-        _.defaults(options, {dir: '', categories: [], curveIndex: 0})
+        _.defaults(options, {dir: '', categories: [], curve: {}})
         self.dirInfo(options.dir, function(err, data) {
             if (err)
                 return fail(cb)(err)

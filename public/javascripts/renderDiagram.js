@@ -1,6 +1,6 @@
-function renderDiagram(m, curdir, categorySelection, curveIndex) {
+function renderDiagram(m, curdir, categorySelection, curve) {
     var container = $('#main-view')
-    m.diagramData({dir: curdir, categories: categorySelection, curveIndex: curveIndex}, function(err, categoryInfo) {
+    m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo) {
         if (err)
             return popups.errorMessage(err)
         if (!(categoryInfo.length > 0))
@@ -77,11 +77,9 @@ function renderDiagram(m, curdir, categorySelection, curveIndex) {
             })
         })()
 
-        var curveInfo = dirInfo.processing.curves[curveIndex]
-
         // Now generate the diagram
-        var xColumnName = curveInfo.x.value
-        var yColumnName = curveInfo.y.value
+        var xColumnName = curve.x.value
+        var yColumnName = curve.y.value
         var allCurveData = m.cache[curdir].curveData
         function columnExtent(columnName) {
             var x = []
@@ -104,11 +102,11 @@ function renderDiagram(m, curdir, categorySelection, curveIndex) {
             return d3[{'linear': 'scaleLinear', 'log': 'scaleLog'}[scaleType] || 'scaleLinear']()
         }
 
-        var x = makeScale(curveInfo.x.scale)
+        var x = makeScale(curve.x.scale)
             .rangeRound([0, width])
             .domain(extentX)
 
-        var y = makeScale(curveInfo.y.scale)
+        var y = makeScale(curve.y.scale)
             .rangeRound([height, 0])
             .domain(extentY)
 

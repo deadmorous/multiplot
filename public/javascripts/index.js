@@ -44,8 +44,8 @@
 
     categorySelector(makeLazyRequest(diagramRequest, 1500))
 
-    curveSelector(function(index) {
-        renderDiagram(m, folderNavigator.curdir(), categorySelector.current(), index)
+    curveSelector(function(curve) {
+        renderDiagram(m, folderNavigator.curdir(), categorySelector.current(), curve)
     })
 
     folderNavigator.cd('')

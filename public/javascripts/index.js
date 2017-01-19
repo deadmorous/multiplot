@@ -10,7 +10,7 @@
                 popups.errorMessage(err)
             categorySelector.render(data)
             categorySelector.makeInitialSelection()
-            curveSelector.render(data)
+            curveSelector.render(curdir, data)
             if (categorySelector.hasCategories())
                 $('#main-view')
                     .append($('<span>')

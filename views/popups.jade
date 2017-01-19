@@ -33,13 +33,26 @@ script.
         $(document).ready(function() {
             container = $('#popups')
         })
-        function message(status, text, duration) {
-            var popup = $('<div>').addClass(status).text(text)
+        function message(status, text, options) {
+            var duration
+            var format = 'text'
+            switch (typeof options) {
+            case 'number':
+                duration = options
+                break
+            case 'object':
+                duration = options.duration || 3000
+                format = options.format || 'text'
+                break
+            default:
+                duration = 3000
+            }
+            var popup = $('<div>').addClass(status)[format](text)
             container.prepend(popup)
             popup.slideDown(200)
             setTimeout(function() {
                 popup.slideUp(500, popup.remove.bind(popup))
-            }, duration || 3000)
+            }, duration)
         }
         return {
             message: message,

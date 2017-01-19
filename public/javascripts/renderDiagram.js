@@ -1,8 +1,17 @@
 function renderDiagram(m, curdir, categorySelection, curve) {
     var container = $('#main-view')
-    m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo) {
+    m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo, problems) {
         if (err)
             return popups.errorMessage(err)
+        if (!_.isEmpty(problems.messages)) {
+            popups.warningMessage(
+                '<h1>Failed to compute some curves</h1>' +
+                '<p>' + _.keys(problems.failedCurves).join(', ') + '</p>' +
+                '<h2>Messages</h2>' +
+                '<p>' + _.map(problems.messages, (v, name) => name + ' (' + v + ')').join('<br/>') + '</p>',
+                {format: 'html'})
+        }
+        var failedCurves = []
         if (!(categoryInfo.length > 0))
             return container
                 .html('')
@@ -49,6 +58,8 @@ function renderDiagram(m, curdir, categorySelection, curve) {
             if (varyingCategoryNames.length > 0)
                 diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Varying categories: ' + varyingCategoryNames.join(', ')))
             categoryInfo.forEach(function(item, index) {
+                if (problems.failedCurves[item.name])
+                    return
                 var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
                 legend.append(
                     $('<div>')
@@ -84,6 +95,8 @@ function renderDiagram(m, curdir, categorySelection, curve) {
         function columnExtent(columnName) {
             var x = []
             categoryInfo.forEach(function(item) {
+                if (problems.failedCurves[item.name])
+                    return
                 x = x.concat(allCurveData[item.name].extent[columnName])
             })
             return d3.extent(x)
@@ -152,6 +165,8 @@ function renderDiagram(m, curdir, categorySelection, curve) {
             .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
         categoryInfo.forEach(function(item, index) {
+            if (problems.failedCurves[item.name])
+                return
             var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
             var path = g.append("path")
                 .datum(allCurveData[item.name].data)

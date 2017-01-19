@@ -61,6 +61,17 @@ router
         })
     })
 
+    .get('/multiplot-primary-values', function(req, res, next) {
+        var curdir = req.query.curdir || ''
+        multiplot.primaryValues(curdir, function(err, v) {
+            if (err) {
+                console.log(err)
+                return res.sendStatus(500)
+            }
+            res.send(JSON.stringify(v))
+        })
+    })
+
     .post('/multiplot-selection-info', function(req, res, next) {
         var query = JSON.parse(req.body.query)
         multiplot.selectionInfo(query, function(err, dd) {

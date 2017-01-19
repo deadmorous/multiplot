@@ -1,7 +1,8 @@
 var path = require('path')
 var fs = require('fs')
 var _ = require('lodash')
-// var async = require('async')
+var async = require('async')
+var firstline = require('firstline')
 
 var dirInfoCache = {}
 
@@ -90,58 +91,40 @@ function selectionInfo(query, cb) {
 
         // Invoke callback
         cb(null, files)
+    })
+}
 
-        /*
-        // Turn elements of the files array from strings into objects
-        files = _.map(files, function(fileName) { return { name: fileName } } )
+function primaryValues(subdir, cb) {
+    dirInfo(subdir, function(err, di) {
+        if (err)
+            return cb(err, null)
 
-        // Process all files matching the filter
-        var maxFileReads = 10
-        var dir = path.join(process.env.MULTIPLOT_DATA_ROOT, query.curdir)
-        async.eachLimit(files, maxFileReads,
-            function(file, cb) {
-                // Read file
-                fs.readFile(path.join(dir, file.name), 'utf8', function(err, data) {
-                    if(err)
-                        return cb(err)
-                    // Compute file categories
-                    file.categories = fileCategories(di, file.name)
+        if (di.status === 'empty')
+            return cb(null, [])
 
-                    // Parse file content such that file content is an object with properties
-                    // valid    - true if there is at least one column, and there are at least
-                    //            one line of values, and the total number of values is a multiple
-                    //            of the number of columns;
-                    // headings - column headings (array of strings);
-                    // values   - values (array of numbers in the row-wise order).
-                    var content = file.content = {}
-                    var lines = data.split(/\r?\n/)
-                    if (lines.length > 1) {
-                        content.headings = lines[0].split('\t')
-                        lines.splice(0,1)
-                        _.remove(lines, function(line) { return line.length === 0   ||   line.match(/^(#|\/\/)/) })
-                        content.values = _.map(lines.join('\t').split('\t'), parseFloat)
-                        content.valid =
-                                content.headings.length > 0   &&
-                                content.values.length > 0   &&
-                                content.values.length % content.headings.length === 0
-                    }
-                    else
-                        content.valid = false
+        var values = {}
+        async.eachLimit(
+            di.files, 20,
+            function(fileName, cb) {
+                var filePath = path.join(process.env.MULTIPLOT_DATA_ROOT, subdir, fileName)
+                firstline(filePath).then(function(text) {
+                    _.each(text.trim().split('\t'), function(value) {
+                        values[value] = 1
+                    })
                     cb()
                 })
             },
             function(err) {
                 if (err)
                     return cb(err)
-                var dd = files
-                cb(null, dd)
+                cb(null, _.keys(values))
             }
         )
-        */
     })
 }
 
 module.exports = {
     dirInfo: dirInfo,
-    selectionInfo: selectionInfo
+    selectionInfo: selectionInfo,
+    primaryValues: primaryValues
 }

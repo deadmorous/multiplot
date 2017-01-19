@@ -1,5 +1,5 @@
 var multiplot = (function() {
-    function done(cb) { return function(data) { cb(null, data) } }
+    function done(cb) { return function() { cb.apply(this, [null].concat(Array.prototype.slice.call(arguments)) ) } }
     function fail(cb) { return function(err) { cb(err) } }
 
     function computeMovingAverage(d, op, valueName) {
@@ -96,6 +96,7 @@ var multiplot = (function() {
     {
         var cacheItem = multiplot.cache[options.dir]
         var allCurveData = cacheItem.curveData
+        var problems = { messages: {}, failedCurves: {} }
         async.eachLimit(
             categoryInfo,
             10,
@@ -124,8 +125,18 @@ var multiplot = (function() {
                             var curve = options.curve
                             var knownColumns = {}
                             var processingInfo = multiplot.cache[options.dir].dirInfo.processing
-                            computeValueColumnForCurve(processingInfo, curveData, curve.x.value, knownColumns)
-                            computeValueColumnForCurve(processingInfo, curveData, curve.y.value, knownColumns)
+                            function wrappedComputeValueColumnForCurve(value) {
+                                try {
+                                    computeValueColumnForCurve(processingInfo, curveData, value, knownColumns)
+                                }
+                                catch(e) {
+                                    var count = problems.messages[e.message] || 0
+                                    problems.messages[e.message] = count+1
+                                    problems.failedCurves[item.name] = 1
+                                }
+                            }
+                            wrappedComputeValueColumnForCurve(curve.x.value)
+                            wrappedComputeValueColumnForCurve(curve.y.value)
                             done(cb)()
                         }
                     ],
@@ -135,7 +146,7 @@ var multiplot = (function() {
                 )
             },
             function(err) {
-                (err? fail: done)(cb)(categoryInfo)
+                (err? fail: done)(cb)(categoryInfo, problems)
             })
     }
 

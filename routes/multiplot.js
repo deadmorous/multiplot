@@ -117,7 +117,7 @@ function primaryValues(subdir, cb) {
             function(err) {
                 if (err)
                     return cb(err)
-                cb(null, _.keys(values))
+                cb(null, _.keys(values).sort())
             }
         )
     })

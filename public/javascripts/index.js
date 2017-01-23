@@ -11,6 +11,7 @@
             categorySelector.render(data)
             categorySelector.makeInitialSelection()
             curveSelector.render(curdir, data)
+            filters.render(curdir, data)
             if (categorySelector.hasCategories())
                 $('#main-view')
                     .append($('<span>')
@@ -28,29 +29,16 @@
     function diagramRequest() {
         // popups.infoMessage('Requesting diagram data...', 300)
         hasDiagram = true
-        renderDiagram(m, folderNavigator.curdir(), categorySelector.current(), curveSelector.current())
+        renderDiagram(m, folderNavigator.curdir(), categorySelector.current(), curveSelector.current(), filters.current())
     }
 
-    function makeLazyRequest(request, timeout) {
-        var requestCount = 0
-        return function() {
-            ++requestCount
-            setTimeout(function() {
-                if (--requestCount == 0)
-                    request()
-            }, timeout)
-        }
-    }
-
-    categorySelector(makeLazyRequest(diagramRequest, 1500))
-
-    curveSelector(function(curve) {
-        renderDiagram(m, folderNavigator.curdir(), categorySelector.current(), curve)
-    })
+    categorySelector(util.makeLazyRequest(diagramRequest, 1500))
+    curveSelector(diagramRequest)
+    filters(diagramRequest)
 
     folderNavigator.cd('')
 
-    $(window).resize(makeLazyRequest(function() {
+    $(window).resize(util.makeLazyRequest(function() {
         if (hasDiagram)
             diagramRequest()
     }, 300))

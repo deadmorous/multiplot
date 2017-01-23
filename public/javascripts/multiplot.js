@@ -115,8 +115,11 @@ var multiplot = (function() {
                                 .done(function(data) {
                                     curveData = allCurveData[item.name] = {
                                         data: d3.tsvParse(data, function(d) {
-                                            for(var col in d)
-                                                d[col] = +d[col]
+                                            for(var col in d) {
+                                                var v = d[col]
+                                                if (v.match(util.fprx))
+                                                    d[col] = +v
+                                            }
                                             return d
                                         }),
                                         extent: {}

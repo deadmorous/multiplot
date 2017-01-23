@@ -13,14 +13,18 @@ block content
             span.top-panel-item
                 span: a#chdir(href='') Folder
                 span#curdir
-            span.top-panel-item#curve-selector Curve:
+            span.top-panel-item.top-panel-popup-handle#curve-selector Curve:
                 span#curve-title
-                span#curve-selector-items
+                span.top-panel-popup#curve-selector-items
+            span.top-panel-item.top-panel-popup-handle#filters Filters...
+                span.top-panel-popup#filter-items
         .with-border-top#main-view
     include popups.jade
+    script(src='/javascripts/util.js')
     script(src='/javascripts/folderNavigator.js')
     script(src='/javascripts/multiplot.js')
     script(src='/javascripts/categorySelector.js')
     script(src='/javascripts/renderDiagram.js')
     script(src='/javascripts/curveSelector.js')
+    script(src='/javascripts/filters.js')
     script(src='/javascripts/index.js')

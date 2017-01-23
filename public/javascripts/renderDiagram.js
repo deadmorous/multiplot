@@ -1,4 +1,4 @@
-function renderDiagram(m, curdir, categorySelection, curve) {
+function renderDiagram(m, curdir, categorySelection, curve, filters) {
     var container = $('#main-view')
     m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo, problems) {
         if (err)
@@ -186,12 +186,23 @@ function renderDiagram(m, curdir, categorySelection, curve) {
             .attr("transform", "translate(" + width + ", 0)")
             .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
+        function filteredData(data) {
+            if (filters.length === 0)
+                return data
+            return _.filter(data, function(item) {
+                return filters.every(function(filter) {
+                    var d = item[filter.name]
+                    return filter.values.some(x => x(d))
+                })
+            })
+        }
+
         categoryInfo.forEach(function(item, index) {
             if (problems.failedCurves[item.name])
                 return
             var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
             var path = g.append("path")
-                .datum(allCurveData[item.name].data)
+                .datum(filteredData(allCurveData[item.name].data))
                 .attr("class", "line")
                 .attr('stroke', color)
                 .attr("d", line)

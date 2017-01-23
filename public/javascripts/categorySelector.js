@@ -17,15 +17,6 @@ var categorySelector = (function() {
         return result
     }
 
-    function labeledCheckbox(labelText, checkBoxClass, textSpanClass) {
-        var labelTextElement = $('<span>').text(labelText)
-        if(textSpanClass)
-            labelTextElement.addClass(textSpanClass)
-        return $('<label>')
-            .append($('<input>').attr('type', 'checkbox').addClass(checkBoxClass))
-            .append(labelTextElement)
-    }
-
     function renderCategories(data) {
         var container = $('#left-panel')
         switch (data.status) {
@@ -34,12 +25,12 @@ var categorySelector = (function() {
             var n = data.categoryNames.length
             for (var icat=0; icat<n; ++icat) {
                 var catElement = $('<div>').addClass('category').appendTo(container)
-                catElement.append(labeledCheckbox(data.categoryNames[icat], 'category-title', 'category-title-text'))
+                catElement.append(util.labeledCheckbox(data.categoryNames[icat], 'category-title', 'category-title-text'))
                 var catValuesElement = $('<div>').addClass('category-values').appendTo(catElement)
                 var catVals = data.categories[icat]
                 for (var ival=0, nvals=catVals.length; ival<nvals; ++ival)
                     $('<div>').addClass('category-value-container')
-                        .append(labeledCheckbox(catVals[ival], 'category-value', 'category-value-text'))
+                        .append(util.labeledCheckbox(catVals[ival], 'category-value', 'category-value-text'))
                         .appendTo(catValuesElement)
             }
             $('.category-title').change(function() {

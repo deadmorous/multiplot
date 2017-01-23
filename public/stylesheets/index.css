@@ -70,18 +70,23 @@
     padding-left: 15px;
 }
 
-#curve-selector {
+.top-panel-popup-handle {
     display: none;
 }
 
-#curve-selector-items {
+.top-panel-popup {
     position: fixed;
     display: none;
 }
 
-#curve-selector ul {
-    background-color: #eee;
+.top-panel-popup-content {
     border-bottom: 1px solid #ddd;
+    max-height: 600px;
+    overflow: auto;
+}
+
+.top-panel-popup ul {
+    background-color: #eee;
     list-style-type: none;
     padding: 3px 5px;
 }

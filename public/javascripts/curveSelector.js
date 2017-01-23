@@ -18,7 +18,7 @@ var curveSelector = (function() {
                 global.cb(global.current)
             }
             global.current = data.processing.curves[0]
-            var curveList = $('<ul>').appendTo(container)
+            var curveList = $('<ul>').addClass('top-panel-popup-content').appendTo(container)
             data.processing.curves.forEach(function(curve, index) {
                 $('<li>').append(
                     $('<a>').attr('href', '')

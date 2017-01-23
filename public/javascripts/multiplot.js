@@ -44,7 +44,11 @@ var multiplot = (function() {
 
         function computeExtent() {
             if (!curveData.extent[valueName])
-                curveData.extent[valueName] = d3.extent(d, function(d) {return d[valueName]})
+                curveData.extent[valueName] = {
+                    total: d3.extent(d, function(d) {return d[valueName]}),
+                    absNonzero: d3.extent(d, function(d) { return Math.abs(d[valueName]) || undefined }),
+                    hasZeros: d.findIndex(function(d) { return d[valueName] === 0 }) !== -1
+                }
         }
 
         if (valueName in knownColumns)

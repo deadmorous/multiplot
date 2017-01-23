@@ -92,17 +92,39 @@ function renderDiagram(m, curdir, categorySelection, curve) {
         var xColumnName = curve.x.value
         var yColumnName = curve.y.value
         var allCurveData = m.cache[curdir].curveData
-        function columnExtent(columnName) {
+        function columnExtent(columnName, scaleType) {
             var x = []
+            var hasZeros = false
             categoryInfo.forEach(function(item) {
                 if (problems.failedCurves[item.name])
                     return
-                x = x.concat(allCurveData[item.name].extent[columnName])
+                if (scaleType === 'log') {
+                    var extent = allCurveData[item.name].extent[columnName]
+                    x = x.concat(extent.absNonzero)
+                    hasZeros = hasZeros || extent.hasZeros
+                }
+                else
+                    x = x.concat(allCurveData[item.name].extent[columnName].total)
             })
-            return d3.extent(x)
+            var result = d3.extent(x)
+            if (hasZeros) {
+                if (result[0] === undefined)
+                    result = [1, 10]
+                else
+                    result[0] /= 1000
+            }
+
+            return result
         }
-        var extentX = columnExtent(xColumnName)
-        var extentY = columnExtent(yColumnName)
+        var extentX = columnExtent(xColumnName, curve.x.scale)
+        var extentY = columnExtent(yColumnName, curve.y.scale)
+
+        var coordFunc = {
+            linear: function (columnName, extent, d) { return d[columnName] },
+            log: function (columnName, extent, d) { return Math.max(Math.abs(d[columnName]), extent[0]) }
+        }
+        var xCoord = coordFunc[curve.x.scale].bind(this, xColumnName, extentX)
+        var yCoord = coordFunc[curve.y.scale].bind(this, yColumnName, extentY)
 
         var margin = {top: 20, right: 20, bottom: 30, left: 50}
 
@@ -124,8 +146,8 @@ function renderDiagram(m, curdir, categorySelection, curve) {
             .domain(extentY)
 
         var line = d3.line()
-            .x(function(d) { return x(d[xColumnName]) })
-            .y(function(d) { return y(d[yColumnName]) })
+            .x(function(d) { return x(xCoord(d)) })
+            .y(function(d) { return y(yCoord(d)) })
 
         // X axis
         g.append("g")

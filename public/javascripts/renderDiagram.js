@@ -92,6 +92,34 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
         var xColumnName = curve.x.value
         var yColumnName = curve.y.value
         var allCurveData = m.cache[curdir].curveData
+
+        function filteredData(data) {
+            if (filters.length === 0)
+                return data
+            return _.filter(data, function(item) {
+                return filters.every(function(filter) {
+                    var d = item[filter.name]
+                    return filter.values.some(x => x(d))
+                })
+            })
+        }
+        var filteredCurveData
+        if (filters.length === 0)
+            filteredCurveData = allCurveData
+        else {
+            filteredCurveData = {}
+            categoryInfo.forEach(function(item) {
+                var d = filteredData(allCurveData[item.name].data)
+                var extent = {}
+                filteredCurveData[item.name] = {
+                    data: d,
+                    extent: extent
+                }
+                extent[xColumnName] = multiplot.dataColumnExtent(d, xColumnName)
+                extent[yColumnName] = multiplot.dataColumnExtent(d, yColumnName)
+            })
+        }
+
         function columnExtent(columnName, scaleType) {
             var x = []
             var hasZeros = false
@@ -99,12 +127,12 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 if (problems.failedCurves[item.name])
                     return
                 if (scaleType === 'log') {
-                    var extent = allCurveData[item.name].extent[columnName]
+                    var extent = filteredCurveData[item.name].extent[columnName]
                     x = x.concat(extent.absNonzero)
                     hasZeros = hasZeros || extent.hasZeros
                 }
                 else
-                    x = x.concat(allCurveData[item.name].extent[columnName].total)
+                    x = x.concat(filteredCurveData[item.name].extent[columnName].total)
             })
             var result = d3.extent(x)
             if (hasZeros) {
@@ -186,23 +214,12 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
             .attr("transform", "translate(" + width + ", 0)")
             .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
-        function filteredData(data) {
-            if (filters.length === 0)
-                return data
-            return _.filter(data, function(item) {
-                return filters.every(function(filter) {
-                    var d = item[filter.name]
-                    return filter.values.some(x => x(d))
-                })
-            })
-        }
-
         categoryInfo.forEach(function(item, index) {
             if (problems.failedCurves[item.name])
                 return
             var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
             var path = g.append("path")
-                .datum(filteredData(allCurveData[item.name].data))
+                .datum(filteredCurveData[item.name].data)
                 .attr("class", "line")
                 .attr('stroke', color)
                 .attr("d", line)

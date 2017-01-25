@@ -2,6 +2,14 @@ var multiplot = (function() {
     function done(cb) { return function() { cb.apply(this, [null].concat(Array.prototype.slice.call(arguments)) ) } }
     function fail(cb) { return function(err) { cb(err) } }
 
+    function dataColumnExtent(d, valueName) {
+        return {
+            total: d3.extent(d, function(d) {return d[valueName]}),
+            absNonzero: d3.extent(d, function(d) { return Math.abs(d[valueName]) || undefined }),
+            hasZeros: d.findIndex(function(d) { return d[valueName] === 0 }) !== -1
+        }
+    }
+
     function computeMovingAverage(d, op, valueName) {
         var n = d.length
         var navg = op.n < n? op.n: n
@@ -44,11 +52,7 @@ var multiplot = (function() {
 
         function computeExtent() {
             if (!curveData.extent[valueName])
-                curveData.extent[valueName] = {
-                    total: d3.extent(d, function(d) {return d[valueName]}),
-                    absNonzero: d3.extent(d, function(d) { return Math.abs(d[valueName]) || undefined }),
-                    hasZeros: d.findIndex(function(d) { return d[valueName] === 0 }) !== -1
-                }
+                curveData.extent[valueName] = dataColumnExtent(d, valueName)
         }
 
         if (valueName in knownColumns)
@@ -200,6 +204,7 @@ var multiplot = (function() {
                 .fail(fail(cb))
         })
     }
-
-    return function () { return new Multiplot }
+    var result = function () { return new Multiplot }
+    result.dataColumnExtent = dataColumnExtent
+    return result
 })()

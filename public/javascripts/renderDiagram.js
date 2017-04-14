@@ -39,9 +39,46 @@ function markerShape(index) {
     return markerShapes[index%markerShapes.length].join(',')
 }
 
-var useColors = true
+var specialStyles = [{
+    match: function(name) {
+        return name.match(/1e-8_rk4/)? true: false
+    },
+    style: {
+        color: '#c00',
+        useMarkers: false,
+        dasharray: []
+    }}, {
+    match: function(name) {
+        return name.match(/_nonsmooth_/) && !name.match(/1e-8_rk4/)
+    },
+    style: {
+        color: '#000',
+        useMarkers: true,
+        dasharray: ['1', '1']
+    }}, {
+    match: function(name) {
+        return name.match(/_atan_/) && !name.match(/1e-8_rk4/)
+    },
+    style: {
+        color: '#aaa',
+        useMarkers: true,
+        dasharray: ['3', '1']
+    }
+}]
+
+function itemSpecificStyle(name) {
+    var result = {}
+    specialStyles.forEach(function(item, index) {
+    if (item.match(name))
+        $.extend(result, item.style)
+    })
+    return result;
+}
+
+var useColors = false
 var useMarkers = true
-var markerSize = 10
+var markerSize = 5
+var curveStrokeDasharray = [3,2]
 
 var svgTag = '<svg xmlns:svg="http://www.w3.org/2000/svg">'
 
@@ -51,6 +88,11 @@ function appendMarkerSvgShape(parentSvg, index, color) {
             .append('polygon')
                 .attr('points', markerShape(index))
                 .attr('fill', color)
+    parentSvg.append('g').attr('transform', 'scale(' + markerSize/4 + ',' + markerSize/4 + ')')
+        .append('g').attr('transform', 'translate(2,2)')
+            .append('polygon')
+                .attr('points', markerShape(index))
+                .attr('fill', '#fff')
 }
 
 return function renderDiagram(m, curdir, categorySelection, curve, filters) {
@@ -120,7 +162,10 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             categoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
+                var itemStyle = itemSpecificStyle(item.name)
                 var color = curveColor(index)
+                if (itemStyle.color)
+                    color = itemStyle.color
                 var legendItem = $('<div>')
                     .addClass('diagram-legend-item')
                     .attr('id', 'diagram-legend-item-' + index)
@@ -135,6 +180,9 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         }
                     )
                     .appendTo(legend)
+                var useMarkersForLegendItem = useMarkers
+                if (itemStyle.hasOwnProperty('useMarkers'))
+                    useMarkersForLegendItem = itemStyle.useMarkers
                 var legendItemMarker = $('<span>')
                     .addClass('diagram-legend-item-mark')
                     .html('&nbsp;').appendTo(legendItem)
@@ -142,7 +190,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         .addClass('diagram-legend-item-text')
                         .text(varyingCategoryValues(item.categories).join(', '))
                         .appendTo(legendItem)
-                if (useMarkers) {
+                if (useMarkersForLegendItem) {
                     var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
                     appendMarkerSvgShape(legendItemSvg, index, color)
                 }
@@ -285,12 +333,21 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 return
             var color = curveColor(index)
             var data = filteredCurveData[item.name].data
+            var itemStyle = itemSpecificStyle(item.name)
+            if (itemStyle.color)
+                color = itemStyle.color
+            var dasharray = curveStrokeDasharray
+            if (itemStyle.hasOwnProperty('dasharray'))
+                dasharray = itemStyle.dasharray
             var path = g.append("path")
                 .datum(data)
                 .attr("class", "line")
                 .attr('stroke', color)
+                .attr('fill', 'none')
                 .attr("d", line)
                 .attr('id', 'diagram-curve-' + index)
+            if (dasharray instanceof Array && dasharray.length > 0)
+                path.attr('stroke-dasharray', dasharray.join(','))
 
             $(path.node())
                 .hover(
@@ -310,13 +367,17 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             categoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
+                var itemStyle = itemSpecificStyle(item.name)
+                if (itemStyle.useMarkers === false)
+                    return
                 var color = curveColor(index)
+                if (itemStyle.color)
+                    color = itemStyle.color
                 var data = filteredCurveData[item.name].data
 
                 // Create curve marker
                 var markerId = 'marker-' + index
                 var markerUrl = 'url(#' + markerId + ')'
-
                 var marker = svgDefs.append('marker')
                     .attr('id', markerId)
                     .attr('markerWidth', markerSize)
@@ -336,6 +397,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                     .datum(markerData)
                     .attr("class", "line")
                     .attr('stroke', 'none')
+                    .attr('fill', 'none')
                     .attr("d", line)
                     .attr('marker-start', markerUrl)
                     .attr('marker-end', markerUrl)

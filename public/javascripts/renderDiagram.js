@@ -1,4 +1,59 @@
-function renderDiagram(m, curdir, categorySelection, curve, filters) {
+var renderDiagram = (function() {
+
+var markerShapes = [
+        [-1, -1,   1, -1,   0, 1],          // triaUp
+        [ 1,  1,   -1, 1,   0, -1],         // triaDn
+        [-0.707, -0.707,   0.707, -0.707,   0.707, 0.707,   -0.707, 0.707], // square
+        [ 0, -1,   1, 0,   0, 1,   -1, 0],   // diamond
+        [ 1.000, 0.000,   0.924, 0.383,   0.707, 0.707,   0.383, 0.924,
+          0.000, 1.000,  -0.383, 0.924,  -0.707, 0.707,  -0.924, 0.383,
+         -1.000, 0.000,  -0.924, -0.383, -0.707, -0.707, -0.383, -0.924,
+          0.000, -1.000,  0.383, -0.924,  0.707, -0.707,  0.924, -0.383], // circ
+        [ 0.000, 1.000,   -0.217, 0.125,   -0.866, -0.500,
+          0.000, -0.250,   0.866, -0.500,   0.217, 0.125], // star3u
+        [ 0.000, -1.000,   0.217, -0.125,   0.866, 0.500,
+          0.000, 0.250,   -0.866, 0.500,   -0.217, -0.125], // star3d
+        [ 0.000, 1.000,   -0.283, 0.283,   -1.000, 0.000,   -0.283, -0.283,
+          0.000, -1.000,   0.283, -0.283,   1.000, 0.000,   0.283, 0.283], // star4
+        [ 0.707, 0.707,   0.000, 0.400,   -0.707, 0.707,   -0.400, 0.000,
+         -0.707, -0.707,   0.000, -0.400,   0.707, -0.707,   0.400, 0.000], // star4x
+        [ 0.000, 1.000,   -0.294, 0.405,   -0.951, 0.309,   -0.476, -0.155,   -0.588, -0.809,
+          0.000, -0.500,   0.588, -0.809,   0.476, -0.155,   0.951, 0.309,   0.294, 0.405], // star5
+        [ 0.200, 0.200,   0.200, 0.980,   -0.200, 0.980,   -0.200, 0.200,
+         -0.980, 0.200,   -0.980, -0.200,   -0.200, -0.200,   -0.200, -0.980,
+          0.200, -0.980,   0.200, -0.200,   0.980, -0.200,   0.980, 0.200], // plus
+        [ 0.000, 0.283,   -0.551, 0.834,   -0.834, 0.551,   -0.283, 0.000,
+         -0.834, -0.551,   -0.551, -0.834,   0.000, -0.283,   0.551, -0.834,
+          0.834, -0.551,   0.283, 0.000,   0.834, 0.551,   0.551, 0.834], // cross
+        [ 1.000, 0.000,   0.924, 0.383,   0.707, 0.707,   0.383, 0.924,   0.000, 1.000,
+         -0.383, 0.924,   -0.707, 0.707,   -0.924, 0.383,   -1.000, 0.000], // circ50u
+        [ 0.000, 1.000,   -0.383, 0.924,   -0.707, 0.707,   -0.924, 0.383,   -1.000, 0.000,
+         -0.924, -0.383,   -0.707, -0.707,   -0.383, -0.924,   0.000, -1.000], // circ50l
+        [-1.000, 0.000,   -0.924, -0.383,   -0.707, -0.707,   -0.383, -0.924,   0.000, -1.000,
+          0.383, -0.924,   0.707, -0.707,   0.924, -0.383,   1.000, 0.000], // circ50d
+        [ 0.000, -1.000,   0.383, -0.924,   0.707, -0.707,   0.924, -0.383,   1.000, 0.000,
+          0.924, 0.383,   0.707, 0.707,   0.383, 0.924,   0.000, 1.000] // circ50r
+    ]
+
+function markerShape(index) {
+    return markerShapes[index%markerShapes.length].join(',')
+}
+
+var useColors = true
+var useMarkers = true
+var markerSize = 10
+
+var svgTag = '<svg xmlns:svg="http://www.w3.org/2000/svg">'
+
+function appendMarkerSvgShape(parentSvg, index, color) {
+    parentSvg.append('g').attr('transform', 'scale(' + markerSize/2 + ',' + markerSize/2 + ')')
+        .append('g').attr('transform', 'translate(1,1)')
+            .append('polygon')
+                .attr('points', markerShape(index))
+                .attr('fill', color)
+}
+
+return function renderDiagram(m, curdir, categorySelection, curve, filters) {
     var container = $('#main-view')
     m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo, problems) {
         if (err)
@@ -21,12 +76,17 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
 
         // Stuff container with sub-containers for diagram and legend
         container.html('')
-        var svg = d3.select($('<svg xmlns:svg="http://www.w3.org/2000/svg">').addClass('diagram').appendTo(container)[0])
+        var svg = d3.select($(svgTag).addClass('diagram').appendTo(container)[0])
         var legend = $('<div>').addClass('diagram-legend').appendTo(container)
 
         var colorScale = d3.scaleLinear()
             .domain([0, categoryInfo.length])
             .range([0, 360])
+        var curveColor = useColors? function(index) {
+            return d3.hsl(colorScale(index), 0.5, 0.5).toString()
+        } : function(index) {
+            return '#000'
+        }
 
         // Generate legend first - then we will be able to find the height of the diagram
         ;(function() {
@@ -60,31 +120,34 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
             categoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
-                var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
-                legend.append(
-                    $('<div>')
-                        .addClass('diagram-legend-item')
-                        .append($('<span>')
-                            .css('background-color', color)
-                            .addClass('diagram-legend-item-mark')
-                            .html('&nbsp;')
-                        )
-                        .append($('<span>')
-                            .addClass('diagram-legend-item-text')
-                            .text(varyingCategoryValues(item.categories).join(', '))
-                        )
-                        .attr('id', 'diagram-legend-item-' + index)
-                        .hover(
-                            function() {
-                                var hoverCurveSelector = '#diagram-curve-' + index
-                                $(hoverCurveSelector).addClass('line-hover')
-                                $('.line:not(' + hoverCurveSelector + ')').addClass('line-dimmed')
-                            },
-                            function() {
-                                $('.line').removeClass('line-hover line-dimmed')
-                            }
-                        )
+                var color = curveColor(index)
+                var legendItem = $('<div>')
+                    .addClass('diagram-legend-item')
+                    .attr('id', 'diagram-legend-item-' + index)
+                    .hover(
+                        function() {
+                            var hoverCurveSelector = '#diagram-curve-' + index
+                            $(hoverCurveSelector).addClass('line-hover')
+                            $('.line:not(' + hoverCurveSelector + ')').addClass('line-dimmed')
+                        },
+                        function() {
+                            $('.line').removeClass('line-hover line-dimmed')
+                        }
                     )
+                    .appendTo(legend)
+                var legendItemMarker = $('<span>')
+                    .addClass('diagram-legend-item-mark')
+                    .html('&nbsp;').appendTo(legendItem)
+                    $('<span>')
+                        .addClass('diagram-legend-item-text')
+                        .text(varyingCategoryValues(item.categories).join(', '))
+                        .appendTo(legendItem)
+                if (useMarkers) {
+                    var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
+                    appendMarkerSvgShape(legendItemSvg, index, color)
+                }
+                else
+                    legendItemMarker.css('background-color', color)
             })
         })()
 
@@ -159,6 +222,8 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
         var width = $(svg.node()).width() - margin.left - margin.right
         var height = $(svg.node()).height() - margin.top - margin.bottom
 
+        var svgDefs = svg.append('defs')
+
         var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
         function makeScale(scaleType) {
@@ -214,16 +279,19 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
             .attr("transform", "translate(" + width + ", 0)")
             .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
+        // Add curves
         categoryInfo.forEach(function(item, index) {
             if (problems.failedCurves[item.name])
                 return
-            var color = d3.hsl(colorScale(index), 0.5, 0.5).toString()
+            var color = curveColor(index)
+            var data = filteredCurveData[item.name].data
             var path = g.append("path")
-                .datum(filteredCurveData[item.name].data)
+                .datum(data)
                 .attr("class", "line")
                 .attr('stroke', color)
                 .attr("d", line)
                 .attr('id', 'diagram-curve-' + index)
+
             $(path.node())
                 .hover(
                     function() {
@@ -236,5 +304,43 @@ function renderDiagram(m, curdir, categorySelection, curve, filters) {
                     }
                 )
         })
+
+        if (useMarkers)
+            // Add markers on curves
+            categoryInfo.forEach(function(item, index) {
+                if (problems.failedCurves[item.name])
+                    return
+                var color = curveColor(index)
+                var data = filteredCurveData[item.name].data
+
+                // Create curve marker
+                var markerId = 'marker-' + index
+                var markerUrl = 'url(#' + markerId + ')'
+
+                var marker = svgDefs.append('marker')
+                    .attr('id', markerId)
+                    .attr('markerWidth', markerSize)
+                    .attr('markerHeight', markerSize)
+                    .attr('refX', markerSize/2)
+                    .attr('refY', markerSize/2)
+                appendMarkerSvgShape(marker, index, color)
+
+                // Add markers to the path (TODO better)
+                var markerCount = 10
+                var stride = Math.ceil(data.length / markerCount)
+                var offset = Math.floor((index+0.5)*stride/categoryInfo.length)
+                var markerData = []
+                for (var markerIndex=offset; markerIndex<data.length; markerIndex+=stride)
+                    markerData.push(data[markerIndex])
+                var markerPath = g.append("path")
+                    .datum(markerData)
+                    .attr("class", "line")
+                    .attr('stroke', 'none')
+                    .attr("d", line)
+                    .attr('marker-start', markerUrl)
+                    .attr('marker-end', markerUrl)
+                    .attr('marker-mid', markerUrl)
+            })
     })
 }
+})()

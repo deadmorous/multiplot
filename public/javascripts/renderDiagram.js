@@ -1,5 +1,10 @@
 var renderDiagram = (function() {
 
+var useColors = false
+var useMarkers = true
+var markerSize = 5
+var curveStrokeDasharray = [3,2]
+
 var markerShapes = [
         [-1, -1,   1, -1,   0, 1],          // triaUp
         [ 1,  1,   -1, 1,   0, -1],         // triaDn
@@ -41,12 +46,17 @@ function markerShape(index) {
 
 var specialStyles = [{
     match: function(name) {
+        return name.match(/rk4/)? true: false
+    },
+    style: {
+        dasharray: []
+    }}, {
+    match: function(name) {
         return name.match(/1e-8_rk4/)? true: false
     },
     style: {
         color: '#c00',
-        useMarkers: false,
-        dasharray: []
+        useMarkers: false
     }}, {
     match: function(name) {
         return name.match(/_nonsmooth_/) && !name.match(/1e-8_rk4/)
@@ -54,7 +64,13 @@ var specialStyles = [{
     style: {
         color: '#000',
         useMarkers: true,
-        dasharray: ['1', '1']
+//        dasharray: ['2', '2']
+    }}, {
+    match: function(name) {
+        return name.match(/_nonsmooth_/) && !name.match(/rk4/)
+    },
+    style: {
+        dasharray: ['2', '2']
     }}, {
     match: function(name) {
         return name.match(/_atan_/) && !name.match(/1e-8_rk4/)
@@ -62,7 +78,13 @@ var specialStyles = [{
     style: {
         color: '#aaa',
         useMarkers: true,
-        dasharray: ['3', '1']
+//        dasharray: ['6', '2']
+    }}, {
+    match: function(name) {
+        return name.match(/_atan_/) && !name.match(/rk4/)
+    },
+    style: {
+        dasharray: ['6', '2']
     }
 }]
 
@@ -75,10 +97,18 @@ function itemSpecificStyle(name) {
     return result;
 }
 
-var useColors = false
-var useMarkers = true
-var markerSize = 5
-var curveStrokeDasharray = [3,2]
+function MarkerIndexMan() {
+    this.names = {}
+    this.current = 0
+}
+
+MarkerIndexMan.prototype.index = function(name) {
+    var reducedName = name.replace(/_atan_|_nonsmooth_/, '_')
+    var index = this.names[reducedName]
+    if (typeof index !== 'number')
+        index = this.names[reducedName] = this.current++
+    return index
+}
 
 var svgTag = '<svg xmlns:svg="http://www.w3.org/2000/svg">'
 
@@ -97,6 +127,7 @@ function appendMarkerSvgShape(parentSvg, index, color) {
 
 return function renderDiagram(m, curdir, categorySelection, curve, filters) {
     var container = $('#main-view')
+    var mxman = new MarkerIndexMan
     m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo, problems) {
         if (err)
             return popups.errorMessage(err)
@@ -192,7 +223,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         .appendTo(legendItem)
                 if (useMarkersForLegendItem) {
                     var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
-                    appendMarkerSvgShape(legendItemSvg, index, color)
+                    appendMarkerSvgShape(legendItemSvg, mxman.index(item.name), color)
                 }
                 else
                     legendItemMarker.css('background-color', color)
@@ -384,7 +415,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                     .attr('markerHeight', markerSize)
                     .attr('refX', markerSize/2)
                     .attr('refY', markerSize/2)
-                appendMarkerSvgShape(marker, index, color)
+                appendMarkerSvgShape(marker, mxman.index(item.name), color)
 
                 // Add markers to the path (TODO better)
                 var markerCount = 10

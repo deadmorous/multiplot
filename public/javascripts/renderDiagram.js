@@ -1,10 +1,5 @@
 var renderDiagram = (function() {
 
-var useColors = false
-var useMarkers = true
-var markerSize = 5
-var curveStrokeDasharray = [3,2]
-
 var markerShapes = [
         [-1, -1,   1, -1,   0, 1],          // triaUp
         [ 1,  1,   -1, 1,   0, -1],         // triaDn
@@ -44,56 +39,36 @@ function markerShape(index) {
     return markerShapes[index%markerShapes.length].join(',')
 }
 
-var specialStyles = [{
-    match: function(name) {
-        return name.match(/rk4/)? true: false
-    },
-    style: {
-        dasharray: []
-    }}, {
-    match: function(name) {
-        return name.match(/1e-8_rk4/)? true: false
-    },
-    style: {
-        color: '#c00',
-        useMarkers: false
-    }}, {
-    match: function(name) {
-        return name.match(/_nonsmooth_/) && !name.match(/1e-8_rk4/)
-    },
-    style: {
-        color: '#000',
-        useMarkers: true,
-//        dasharray: ['2', '2']
-    }}, {
-    match: function(name) {
-        return name.match(/_nonsmooth_/) && !name.match(/rk4/)
-    },
-    style: {
-        dasharray: ['2', '2']
-    }}, {
-    match: function(name) {
-        return name.match(/_atan_/) && !name.match(/1e-8_rk4/)
-    },
-    style: {
-        color: '#aaa',
-        useMarkers: true,
-//        dasharray: ['6', '2']
-    }}, {
-    match: function(name) {
-        return name.match(/_atan_/) && !name.match(/rk4/)
-    },
-    style: {
-        dasharray: ['6', '2']
+function itemSpecificStyle(name, pre) {
+    function match(matches) {
+        switch(typeof matches) {
+        case 'string':
+            return name.match(new RegExp(matches))? true: false
+        case 'object':
+            if (matches.and) {
+                if (!(matches.and instanceof Array))
+                    throw new Error('and requires an array as property value')
+                return _.every(matches.and, match)
+            }
+            else if (matches.or) {
+                if (!(matches.and instanceof Array))
+                    throw new Error('or requires an array as property value')
+                return _.some(matches.or, match)
+            }
+            else if (matches.not)
+                return !match(matches.not)
+            else
+                throw new Error('Unrecognized operation')
+        default:
+            throw new Error('Unrecognized match type')
+        }
     }
-}]
-
-function itemSpecificStyle(name) {
     var result = {}
-    specialStyles.forEach(function(item, index) {
-    if (item.match(name))
-        $.extend(result, item.style)
-    })
+    if (pre.specialStyles)
+        pre.specialStyles.forEach(function(item, index) {
+            if (match(item.matches))
+                $.extend(result, item.style)
+        })
     return result;
 }
 
@@ -102,23 +77,32 @@ function MarkerIndexMan() {
     this.current = 0
 }
 
-MarkerIndexMan.prototype.index = function(name) {
-    var reducedName = name.replace(/_atan_|_nonsmooth_/, '_')
-    var index = this.names[reducedName]
+MarkerIndexMan.prototype.index = function(name, pre) {
+    if (pre.nameForMarker) {
+        if (typeof pre.nameForMarker !== 'object')
+            throw new Error('Invalid nameForMarker option')
+        if (!pre.nameForMarker.replace)
+            throw new Error('Invalid nameForMarker option')
+        var replaceArgs = pre.nameForMarker.replace
+        if (!(replaceArgs instanceof Array && replaceArgs.length === 2))
+            throw new Error('Invalid nameForMarker.replace argument')
+        name = name.replace(new RegExp(replaceArgs[0]), replaceArgs[1])
+    }
+    var index = this.names[name]
     if (typeof index !== 'number')
-        index = this.names[reducedName] = this.current++
+        index = this.names[name] = this.current++
     return index
 }
 
 var svgTag = '<svg xmlns:svg="http://www.w3.org/2000/svg">'
 
-function appendMarkerSvgShape(parentSvg, index, color) {
-    parentSvg.append('g').attr('transform', 'scale(' + markerSize/2 + ',' + markerSize/2 + ')')
+function appendMarkerSvgShape(parentSvg, index, pre, color) {
+    parentSvg.append('g').attr('transform', 'scale(' + pre.global.markerSize/2 + ',' + pre.global.markerSize/2 + ')')
         .append('g').attr('transform', 'translate(1,1)')
             .append('polygon')
                 .attr('points', markerShape(index))
                 .attr('fill', color)
-    parentSvg.append('g').attr('transform', 'scale(' + markerSize/4 + ',' + markerSize/4 + ')')
+    parentSvg.append('g').attr('transform', 'scale(' + pre.global.markerSize/4 + ',' + pre.global.markerSize/4 + ')')
         .append('g').attr('transform', 'translate(2,2)')
             .append('polygon')
                 .attr('points', markerShape(index))
@@ -131,6 +115,12 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
     m.diagramData({dir: curdir, categories: categorySelection, curve: curve}, function(err, categoryInfo, problems) {
         if (err)
             return popups.errorMessage(err)
+        var pre = m.dirInfo(curdir).presentation
+        if (!pre.global)
+            pre.global = {}
+        _.defaults(pre.global, {useColors: true, useMarkers: true, markerSize: 5, dasharray: []})
+        if (!pre.specialStyles)
+            pre.specialStyles = []
         if (!_.isEmpty(problems.messages)) {
             popups.warningMessage(
                 '<h1>Failed to compute some curves</h1>' +
@@ -155,7 +145,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
         var colorScale = d3.scaleLinear()
             .domain([0, categoryInfo.length])
             .range([0, 360])
-        var curveColor = useColors? function(index) {
+        var curveColor = pre.global.useColors? function(index) {
             return d3.hsl(colorScale(index), 0.5, 0.5).toString()
         } : function(index) {
             return '#000'
@@ -193,7 +183,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             categoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
-                var itemStyle = itemSpecificStyle(item.name)
+                var itemStyle = itemSpecificStyle(item.name, pre)
                 var color = curveColor(index)
                 if (itemStyle.color)
                     color = itemStyle.color
@@ -211,7 +201,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         }
                     )
                     .appendTo(legend)
-                var useMarkersForLegendItem = useMarkers
+                var useMarkersForLegendItem = pre.global.useMarkers
                 if (itemStyle.hasOwnProperty('useMarkers'))
                     useMarkersForLegendItem = itemStyle.useMarkers
                 var legendItemMarker = $('<span>')
@@ -223,7 +213,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         .appendTo(legendItem)
                 if (useMarkersForLegendItem) {
                     var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
-                    appendMarkerSvgShape(legendItemSvg, mxman.index(item.name), color)
+                    appendMarkerSvgShape(legendItemSvg, mxman.index(item.name, pre), pre, color)
                 }
                 else
                     legendItemMarker.css('background-color', color)
@@ -364,10 +354,10 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 return
             var color = curveColor(index)
             var data = filteredCurveData[item.name].data
-            var itemStyle = itemSpecificStyle(item.name)
+            var itemStyle = itemSpecificStyle(item.name, pre)
             if (itemStyle.color)
                 color = itemStyle.color
-            var dasharray = curveStrokeDasharray
+            var dasharray = pre.global.dasharray
             if (itemStyle.hasOwnProperty('dasharray'))
                 dasharray = itemStyle.dasharray
             var path = g.append("path")
@@ -393,12 +383,12 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 )
         })
 
-        if (useMarkers)
+        if (pre.global.useMarkers)
             // Add markers on curves
             categoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
-                var itemStyle = itemSpecificStyle(item.name)
+                var itemStyle = itemSpecificStyle(item.name, pre)
                 if (itemStyle.useMarkers === false)
                     return
                 var color = curveColor(index)
@@ -411,11 +401,11 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 var markerUrl = 'url(#' + markerId + ')'
                 var marker = svgDefs.append('marker')
                     .attr('id', markerId)
-                    .attr('markerWidth', markerSize)
-                    .attr('markerHeight', markerSize)
-                    .attr('refX', markerSize/2)
-                    .attr('refY', markerSize/2)
-                appendMarkerSvgShape(marker, mxman.index(item.name), color)
+                    .attr('markerWidth', pre.global.markerSize)
+                    .attr('markerHeight', pre.global.markerSize)
+                    .attr('refX', pre.global.markerSize/2)
+                    .attr('refY', pre.global.markerSize/2)
+                appendMarkerSvgShape(marker, mxman.index(item.name, pre), pre, color)
 
                 // Add markers to the path (TODO better)
                 var markerCount = 10

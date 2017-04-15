@@ -56,6 +56,7 @@ router
                 result.categoryNames = di.info.categoryNames
                 result.categories = di.categories
                 result.processing = di.info.processing
+                result.presentation = di.info.presentation || {}
             }
             res.send(JSON.stringify(result))
         })

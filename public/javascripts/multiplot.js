@@ -168,8 +168,11 @@ var multiplot = (function() {
 
     Multiplot.prototype.dirInfo = function(dir, cb) {
         var self = this
+        var hasCb = arguments.length > 1
         if (self.cache[dir])
-            return done(cb)(self.cache[dir].dirInfo)
+            return hasCb? done(cb)(self.cache[dir].dirInfo): self.cache[dir].dirInfo
+        if (!hasCb)
+            throw new Error('dirInfo is not currently cached, asyncronous callback is required')
         $.get('/multiplot-dir-info', { curdir: dir })
             .done(function(data) {
                 data = JSON.parse(data)

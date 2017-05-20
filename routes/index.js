@@ -3,11 +3,9 @@ var path = require('path')
 var fs = require('fs')
 var async = require('async')
 var multiplot = require('./multiplot')
+var dataRootDir = require('./data-root-dir')
 
 var router = express.Router()
-
-if (!process.env.MULTIPLOT_DATA_ROOT)
-    throw new Error('Please specify the MULTIPLOT_DATA_ROOT environment variable')
 
 /* GET home page. */
 router
@@ -17,7 +15,7 @@ router
 
     .get('/view-dir', function(req, res, next) {
         var curdir = req.query.curdir || ''
-        var dir = path.join(process.env.MULTIPLOT_DATA_ROOT, curdir)
+        var dir = path.join(dataRootDir, curdir)
         fs.readdir(dir, function(err, files) {
             if (err) {
                 console.log(err)
@@ -87,7 +85,7 @@ router
     .get('/multiplot-file', function(req, res, next) {
         var curdir = req.query.curdir || ''
         var fileName = req.query.name
-        var filePath = path.join(process.env.MULTIPLOT_DATA_ROOT, curdir, fileName)
+        var filePath = path.join(dataRootDir, curdir, fileName)
         res.sendFile(filePath)
     })
 

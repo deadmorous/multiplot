@@ -3,6 +3,7 @@ var fs = require('fs')
 var _ = require('lodash')
 var async = require('async')
 var firstline = require('firstline')
+var dataRootDir = require('./data-root-dir')
 
 var dirInfoCache = {}
 
@@ -38,7 +39,7 @@ function dirInfo(subdir, cb) {
     var di = dirInfoCache[subdir]
     if (di)
         return cb(null, di)
-    var dir = path.join(process.env.MULTIPLOT_DATA_ROOT, subdir)
+    var dir = path.join(dataRootDir, subdir)
     var infoFilePath = path.join(dir, '.multiplot-info.json')
     fs.readFile(infoFilePath, 'utf8', function(err, data) {
         di = {}
@@ -106,7 +107,7 @@ function primaryValues(subdir, cb) {
         async.eachLimit(
             di.files, 20,
             function(fileName, cb) {
-                var filePath = path.join(process.env.MULTIPLOT_DATA_ROOT, subdir, fileName)
+                var filePath = path.join(dataRootDir, subdir, fileName)
                 firstline(filePath).then(function(text) {
                     _.each(text.trim().split('\t'), function(value) {
                         values[value] = 1

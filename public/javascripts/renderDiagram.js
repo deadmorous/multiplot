@@ -118,7 +118,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
         var pre = m.dirInfo(curdir).presentation
         if (!pre.global)
             pre.global = {}
-        _.defaults(pre.global, {useColors: true, useMarkers: true, markerSize: 5, dasharray: []})
+        _.defaults(pre.global, {width: 1.5, useColors: true, useMarkers: true, markerSize: 5, dasharray: []})
         if (!pre.specialStyles)
             pre.specialStyles = []
         if (!_.isEmpty(problems.messages)) {
@@ -151,36 +151,53 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             return '#000'
         }
 
+        var cnames = dirInfo.categoryNames
+        var ncats = cnames.length
+        var fixedCategories = []
+        var varyingCategoryIndices = []
+        var varyingCategoryNames = []
+        for (var i=0; i<ncats; ++i) {
+            var categories = _(categoryInfo).countBy((item) => item.categories[i]).keys().value()
+            if (categories.length > 1) {
+                varyingCategoryIndices.push(i)
+                varyingCategoryNames.push(cnames[i])
+            }
+            else
+                fixedCategories.push(cnames[i] + ' = ' + categories[0])
+        }
+
+        function varyingCategoryValues(allCategoryValues) {
+            return varyingCategoryIndices.map(function(categoryIndex) {
+                return allCategoryValues[categoryIndex]
+            })
+        }
+
+        function legendItemText(item) {
+            return varyingCategoryValues(item.categories).join(', ')
+        }
+
+        // Sort categories by legend text
+        var sortedCategoryInfo = (function() {
+            var result = categoryInfo.slice()
+            if (_.every(categoryInfo, function(item){ return !isNaN(legendItemText(item)) }))
+                result.sort(function(a, b) { return legendItemText(a)-legendItemText(b) })
+            else
+                result.sort(function(a, b) {
+                    a = legendItemText(a)
+                    b = legendItemText(b)
+                    return a < b? -1: a > b? 1: 0
+                })
+            return result
+        })()
+
         // Generate legend first - then we will be able to find the height of the diagram
         ;(function() {
-            var cnames = dirInfo.categoryNames
-            var ncats = cnames.length
-            var fixedCategories = []
-            var varyingCategoryIndices = []
-            var varyingCategoryNames = []
-            var actualCategories = []
-            for (var i=0; i<ncats; ++i) {
-                var categories = _(categoryInfo).countBy((item) => item.categories[i]).keys().value()
-                if (categories.length > 1) {
-                    varyingCategoryIndices.push(i)
-                    varyingCategoryNames.push(cnames[i])
-                }
-                else
-                    fixedCategories.push(cnames[i] + ' = ' + categories[0])
-            }
-
-            function varyingCategoryValues(allCategoryValues) {
-                return varyingCategoryIndices.map(function(categoryIndex) {
-                    return allCategoryValues[categoryIndex]
-                })
-            }
-
             var diagramSummary = $('<div>').addClass('diagram-legend-summary').appendTo(legend)
             if (fixedCategories.length > 0)
                 diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Fixed categories: ' + fixedCategories.join(', ')))
             if (varyingCategoryNames.length > 0)
                 diagramSummary.append($('<div>').addClass('diagram-legend-summary-item').text('Varying categories: ' + varyingCategoryNames.join(', ')))
-            categoryInfo.forEach(function(item, index) {
+            sortedCategoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
                 var itemStyle = itemSpecificStyle(item.name, pre)
@@ -209,7 +226,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                     .html('&nbsp;').appendTo(legendItem)
                     $('<span>')
                         .addClass('diagram-legend-item-text')
-                        .text(varyingCategoryValues(item.categories).join(', '))
+                        .text(legendItemText(item))
                         .appendTo(legendItem)
                 if (useMarkersForLegendItem) {
                     var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
@@ -240,7 +257,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             filteredCurveData = allCurveData
         else {
             filteredCurveData = {}
-            categoryInfo.forEach(function(item) {
+            sortedCategoryInfo.forEach(function(item) {
                 var d = filteredData(allCurveData[item.name].data)
                 var extent = {}
                 filteredCurveData[item.name] = {
@@ -255,7 +272,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
         function columnExtent(columnName, scaleType) {
             var x = []
             var hasZeros = false
-            categoryInfo.forEach(function(item) {
+            sortedCategoryInfo.forEach(function(item) {
                 if (problems.failedCurves[item.name])
                     return
                 if (scaleType === 'log') {
@@ -349,7 +366,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
             .call(d3.axisRight(y).tickSize(-width).tickFormat(""))
 
         // Add curves
-        categoryInfo.forEach(function(item, index) {
+        sortedCategoryInfo.forEach(function(item, index) {
             if (problems.failedCurves[item.name])
                 return
             var color = curveColor(index)
@@ -364,6 +381,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 .datum(data)
                 .attr("class", "line")
                 .attr('stroke', color)
+                .attr('stroke-width', itemStyle.width || pre.global.width)
                 .attr('fill', 'none')
                 .attr("d", line)
                 .attr('id', 'diagram-curve-' + index)
@@ -385,7 +403,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
 
         if (pre.global.useMarkers)
             // Add markers on curves
-            categoryInfo.forEach(function(item, index) {
+            sortedCategoryInfo.forEach(function(item, index) {
                 if (problems.failedCurves[item.name])
                     return
                 var itemStyle = itemSpecificStyle(item.name, pre)
@@ -410,7 +428,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                 // Add markers to the path (TODO better)
                 var markerCount = 10
                 var stride = Math.ceil(data.length / markerCount)
-                var offset = Math.floor((index+0.5)*stride/categoryInfo.length)
+                var offset = Math.floor((index+0.5)*stride/sortedCategoryInfo.length)
                 var markerData = []
                 for (var markerIndex=offset; markerIndex<data.length; markerIndex+=stride)
                     markerData.push(data[markerIndex])

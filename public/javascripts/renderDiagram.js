@@ -51,7 +51,7 @@ function itemSpecificStyle(name, pre) {
                 return _.every(matches.and, match)
             }
             else if (matches.or) {
-                if (!(matches.and instanceof Array))
+                if (!(matches.or instanceof Array))
                     throw new Error('or requires an array as property value')
                 return _.some(matches.or, match)
             }

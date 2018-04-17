@@ -77,7 +77,9 @@ function MarkerIndexMan() {
     this.current = 0
 }
 
-MarkerIndexMan.prototype.index = function(name, pre) {
+MarkerIndexMan.prototype.index = function(name, pre, itemStyle) {
+    if (itemStyle.hasOwnProperty('marker'))
+        return itemStyle.marker
     if (pre.nameForMarker) {
         if (typeof pre.nameForMarker !== 'object')
             throw new Error('Invalid nameForMarker option')
@@ -230,7 +232,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                         .appendTo(legendItem)
                 if (useMarkersForLegendItem) {
                     var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
-                    appendMarkerSvgShape(legendItemSvg, mxman.index(item.name, pre), pre, color)
+                    appendMarkerSvgShape(legendItemSvg, mxman.index(item.name, pre, itemStyle), pre, color)
                 }
                 else
                     legendItemMarker.css('background-color', color)
@@ -293,8 +295,16 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
 
             return result
         }
-        var extentX = columnExtent(xColumnName, curve.x.scale)
-        var extentY = columnExtent(yColumnName, curve.y.scale)
+        function curveAxisExtent(curveAxis, columnName) {
+            var extent = curveAxis.range || columnExtent(xColumnName, curveAxis.scale)
+            if (curveAxis.hasOwnProperty('rangeMin'))
+                extent[0] = curveAxis.rangeMin
+            if (curveAxis.hasOwnProperty('rangeMax'))
+                extent[1] = curveAxis.rangeMax
+            return extent
+        }
+        var extentX = curveAxisExtent(curve.x, xColumnName)
+        var extentY = curveAxisExtent(curve.y, yColumnName)
 
         var coordFunc = {
             linear: function (columnName, extent, d) { return d[columnName] },
@@ -423,7 +433,7 @@ return function renderDiagram(m, curdir, categorySelection, curve, filters) {
                     .attr('markerHeight', pre.global.markerSize)
                     .attr('refX', pre.global.markerSize/2)
                     .attr('refY', pre.global.markerSize/2)
-                appendMarkerSvgShape(marker, mxman.index(item.name, pre), pre, color)
+                appendMarkerSvgShape(marker, mxman.index(item.name, pre, itemStyle), pre, color)
 
                 // Add markers to the path (TODO better)
                 var markerCount = 10

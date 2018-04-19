@@ -407,6 +407,13 @@ var renderDiagram = (function () {
             // Style grid lines and ticks
             g.selectAll('line,path').style('stroke', '#aaa').style('stroke-width', 0.5)
 
+            // Set viewbox before adding curves
+            svg.attr('viewBox', (function() {
+                var bb = svg.node().getBBox()
+                var dx = 3, dy = 0 // The box is not quite correct...
+                return [bb.x-dx, bb.y-dy, bb.width+2*dx, bb.height+2*dy].join(' ')
+            })())
+
             // Add curves
             sortedCategoryInfo.forEach(function (item, index) {
                 if (problems.failedCurves[item.name])

@@ -7,6 +7,7 @@ block content
     script(src='/javascripts/async.min.js')
     script(src='/javascripts/lodash.min.js')
     script(src='/javascripts/md5.min.js')
+    script(src='/file-saver/FileSaver.min.js')
     #left-panel
     #main-panel
         #top-panel
@@ -19,6 +20,7 @@ block content
             span.top-panel-item.top-panel-popup-handle#filters Filters...
                 span.top-panel-popup#filter-items
         .with-border-top#main-view
+        input#saveSvg(type='button' value='Save')
     include popups.jade
     script(src='/javascripts/util.js')
     script(src='/javascripts/folderNavigator.js')

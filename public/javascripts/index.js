@@ -1,11 +1,11 @@
-;(function() {
+; (function () {
     var m = multiplot()
 
     var hasDiagram = false  // Not very accurate because of #chdir
 
     function onDirChanged(curdir) {
         hasDiagram = false
-        m.dirInfo(curdir, function(err, data) {
+        m.dirInfo(curdir, function (err, data) {
             if (err)
                 popups.errorMessage(err)
             categorySelector.render(data)
@@ -38,8 +38,22 @@
 
     folderNavigator.cd('')
 
-    $(window).resize(util.makeLazyRequest(function() {
-        if (hasDiagram)
-            diagramRequest()
-    }, 300))
+    $(window)
+        .resize(util.makeLazyRequest(function () {
+            if (hasDiagram)
+                diagramRequest()
+        }, 300))
+        .keypress(function (e) {
+            if (e.charCode === '~'.charCodeAt(0))
+                $('#saveSvg').click()
+        })
+
+    $('#saveSvg').click(function () {
+        var svgElement = $('svg.diagram')[0]
+        if (!svgElement)
+            return popups.errorMessage('The diagram is not found')
+        var svgData = svgElement.outerHTML
+        var blob = new Blob([svgData], { type: "image/svg+xml" });
+        saveAs(blob, "diagram.svg");
+    })
 })()

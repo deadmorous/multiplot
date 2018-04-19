@@ -122,9 +122,6 @@
     flex: 1;
 }
 
-.diagram-legend {
-}
-
 .diagram-legend-summary {
     padding-bottom: 5px;
 }
@@ -172,11 +169,6 @@
 
 .line-dimmed {
     opacity: 0.4;
-}
-
-.grid .tick line {
-    stroke: #aaa;
-    opacity: 0.7;
 }
 
 .grid path {

@@ -410,7 +410,7 @@ var renderDiagram = (function () {
             // Set viewbox before adding curves
             svg.attr('viewBox', (function() {
                 var bb = svg.node().getBBox()
-                var dx = 3, dy = 0 // The box is not quite correct...
+                var dx = 4, dy = 1 // The box is not quite correct...
                 return [bb.x-dx, bb.y-dy, bb.width+2*dx, bb.height+2*dy].join(' ')
             })())
 

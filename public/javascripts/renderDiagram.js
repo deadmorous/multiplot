@@ -348,16 +348,21 @@ var renderDiagram = (function () {
             }
 
             var x = makeScale(curve.x.scale)
-                .rangeRound([0, width])
+                .range([0, width])
                 .domain(extentX)
             if (pre.global.outerTicks)
                 x.nice()
 
             var y = makeScale(curve.y.scale)
-                .rangeRound([height, 0])
+                .range([height, 0])
                 .domain(extentY)
             if (pre.global.outerTicks)
                 y.nice()
+
+            if (pre.global.rounding) {
+                x.interpolate(d3.interpolateRound)
+                y.interpolate(d3.interpolateRound)
+            }
 
             var line = d3.line()
                 .x(function (d) { return x(xCoord(d)) })

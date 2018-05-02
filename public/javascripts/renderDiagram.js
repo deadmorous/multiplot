@@ -121,7 +121,7 @@ var renderDiagram = (function () {
             if (!pre.global)
                 pre.global = {}
             _.defaults(pre.global, {
-                width: 1.5, useColors: true, useMarkers: true, markerSize: 5, dasharray: [],
+                width: 1.5, useColors: true, useLines: true, useMarkers: true, markerSize: 5, dasharray: [],
                 showLabels: true, outerTicks: true, xticks: 5, yticks: 5
             })
             if (!pre.specialStyles)
@@ -419,41 +419,43 @@ var renderDiagram = (function () {
                 return [bb.x-dx, bb.y-dy, bb.width+2*dx, bb.height+2*dy].join(' ')
             })())
 
-            // Add curves
-            sortedCategoryInfo.forEach(function (item, index) {
-                if (problems.failedCurves[item.name])
-                    return
-                var color = curveColor(index)
-                var data = filteredCurveData[item.name].data
-                var itemStyle = itemSpecificStyle(item.name, pre)
-                if (itemStyle.color)
-                    color = itemStyle.color
-                var dasharray = pre.global.dasharray
-                if (itemStyle.hasOwnProperty('dasharray'))
-                    dasharray = itemStyle.dasharray
-                var path = g.append("path")
-                    .datum(data)
-                    .attr("class", "line")
-                    .attr('stroke', color)
-                    .attr('stroke-width', itemStyle.width || pre.global.width)
-                    .attr('fill', 'none')
-                    .attr("d", line)
-                    .attr('id', 'diagram-curve-' + index)
-                if (dasharray instanceof Array && dasharray.length > 0)
-                    path.attr('stroke-dasharray', dasharray.join(','))
+            if (pre.global.useLines) {
+                // Add curves
+                sortedCategoryInfo.forEach(function (item, index) {
+                    if (problems.failedCurves[item.name])
+                        return
+                    var color = curveColor(index)
+                    var data = filteredCurveData[item.name].data
+                    var itemStyle = itemSpecificStyle(item.name, pre)
+                    if (itemStyle.color)
+                        color = itemStyle.color
+                    var dasharray = pre.global.dasharray
+                    if (itemStyle.hasOwnProperty('dasharray'))
+                        dasharray = itemStyle.dasharray
+                    var path = g.append("path")
+                        .datum(data)
+                        .attr("class", "line")
+                        .attr('stroke', color)
+                        .attr('stroke-width', itemStyle.width || pre.global.width)
+                        .attr('fill', 'none')
+                        .attr("d", line)
+                        .attr('id', 'diagram-curve-' + index)
+                    if (dasharray instanceof Array && dasharray.length > 0)
+                        path.attr('stroke-dasharray', dasharray.join(','))
 
-                $(path.node())
-                    .hover(
-                        function () {
-                            $('.line:not(#diagram-curve-' + index + ')').addClass('line-dimmed')
-                            $('#diagram-legend-item-' + index).addClass('diagram-legend-item-hover')
-                        },
-                        function () {
-                            $('.line').removeClass('line-dimmed')
-                            $('.diagram-legend-item').removeClass('diagram-legend-item-hover')
-                        }
-                    )
-            })
+                    $(path.node())
+                        .hover(
+                            function () {
+                                $('.line:not(#diagram-curve-' + index + ')').addClass('line-dimmed')
+                                $('#diagram-legend-item-' + index).addClass('diagram-legend-item-hover')
+                            },
+                            function () {
+                                $('.line').removeClass('line-dimmed')
+                                $('.diagram-legend-item').removeClass('diagram-legend-item-hover')
+                            }
+                        )
+                })
+            }
 
             if (pre.global.useMarkers)
                 // Add markers on curves
@@ -480,12 +482,17 @@ var renderDiagram = (function () {
                     appendMarkerSvgShape(marker, mxman.index(item.name, pre, itemStyle), pre, color)
 
                     // Add markers to the path (TODO better)
-                    var markerCount = 10
-                    var stride = Math.ceil(data.length / markerCount)
-                    var offset = Math.floor((index + 0.5) * stride / sortedCategoryInfo.length)
                     var markerData = []
-                    for (var markerIndex = offset; markerIndex < data.length; markerIndex += stride)
-                        markerData.push(data[markerIndex])
+                    if (pre.global.denseMarkers)
+                        markerData = data
+                    else {
+                        markerData = []
+                        var markerCount = 10
+                        var stride = Math.ceil(data.length / markerCount)
+                        var offset = Math.floor((index + 0.5) * stride / sortedCategoryInfo.length)
+                        for (var markerIndex = offset; markerIndex < data.length; markerIndex += stride)
+                            markerData.push(data[markerIndex])
+                    }
                     var markerPath = g.append("path")
                         .datum(markerData)
                         .attr("class", "line")

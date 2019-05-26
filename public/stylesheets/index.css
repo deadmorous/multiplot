@@ -140,7 +140,7 @@
 
 .diagram-legend-item-mark {
     display: inline-block;
-    width: 10px;
+    width: 30px;
     height: 10px;
     position: relative;
     top: 4px;
@@ -149,7 +149,7 @@
 
 .diagram-legend-item-mark > svg {
     position: absolute;
-    width: 10px;
+    width: 30px;
     height: 10px;
     top: 0px;
     left: 0px;
@@ -163,7 +163,7 @@
   fill: none;
 }
 
-.line-hover, .line:hover {
+.diagram .line-hover, .diagram .line:hover {
     stroke-width: 5px;
 }
 
@@ -195,7 +195,7 @@
 .clearable.onX{ cursor: pointer; }              /* (jQ) hover cursor style */
 .clearable::-ms-clear {display: none; width:0; height:0;} /* Remove IE default X */
 
-#saveSvg {
+#saveMenu {
     position: absolute;
     top: 0;
     right: 0

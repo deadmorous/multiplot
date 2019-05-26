@@ -233,12 +233,25 @@ var renderDiagram = (function () {
                             .addClass('diagram-legend-item-text')
                             .text(legendItemText(item))
                             .appendTo(legendItem)
+                        let dasharray = pre.global.dasharray
+                        if (itemStyle.hasOwnProperty('dasharray'))
+                            dasharray = itemStyle.dasharray
+                        let legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
+                        legendItemSvg.attr('viewBox', '0 0 30 10')
+                        let path = legendItemSvg.append("path")
+                            .datum([[0,4],[30,4]])
+                            .attr("class", "line")
+                            .attr('stroke', '#000')
+                            .attr('stroke', color)
+                            .attr('stroke-width', itemStyle.width || pre.global.width)
+                            .attr('fill', 'none')
+                            .attr("d", d3.line().x(d => d[0]).y(d => d[1]))
+                        if (dasharray instanceof Array && dasharray.length > 0)
+                            path.attr('stroke-dasharray', dasharray.join(','))
                         if (useMarkersForLegendItem) {
-                            var legendItemSvg = d3.select($(svgTag).appendTo(legendItemMarker)[0])
-                            appendMarkerSvgShape(legendItemSvg, mxman.index(item.name, pre, itemStyle), pre, color)
+                            let gm = legendItemSvg.append('g').attr('transform', 'translate(11, 0) scale(1.5)')
+                            appendMarkerSvgShape(gm, mxman.index(item.name, pre, itemStyle), pre, color)
                         }
-                        else
-                            legendItemMarker.css('background-color', color)
                     })
                 })()
 

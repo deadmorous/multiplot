@@ -56,4 +56,23 @@
         var blob = new Blob([svgData], { type: "image/svg+xml" });
         saveAs(blob, "diagram.svg");
     })
+    $('#saveLegend').click(function() {
+        function text2name(text) {
+            return text.replace(/\s+/, '-').replace(/\//, '-') + '.svg'
+        }
+        let nItemsFound = 0
+        $('.diagram-legend-item').each(function() {
+            let w = $(this)
+            let svg = w.find('svg')
+            if (svg.length == 0)
+                return
+            let text = w.find('.diagram-legend-item-text').text()
+            let svgData = svg[0].outerHTML
+            let blob = new Blob([svgData], { type: "image/svg+xml" });
+            saveAs(blob, text2name(text));
+            ++nItemsFound;
+        })
+        if (nItemsFound === 0)
+            return popups.errorMessage('No svg legend items were found')
+    })
 })()

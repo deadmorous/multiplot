@@ -20,7 +20,9 @@ block content
             span.top-panel-item.top-panel-popup-handle#filters Filters...
                 span.top-panel-popup#filter-items
         .with-border-top#main-view
-        input#saveSvg(type='button' value='Save')
+        #saveMenu
+            input#saveSvg(type='image' src='images/save.png' )
+            input#saveLegend(type='image' src='images/legend.png')
     include popups.jade
     script(src='/javascripts/util.js')
     script(src='/javascripts/folderNavigator.js')

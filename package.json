@@ -15,7 +15,7 @@
     "firstline": "^1.2.1",
     "jade": "~1.11.0",
     "lodash": "^4.17.4",
-    "morgan": "~1.7.0",
+    "morgan": "~1.9.1",
     "serve-favicon": "~2.3.0"
   }
 }
